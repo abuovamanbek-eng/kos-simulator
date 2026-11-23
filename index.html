@@ -1,0 +1,3541 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Симулятор КОС и клеточного метаболизма — ОАРИТ</title>
+  <style>
+    /* =========================================================================
+       ДИЗАЙН-ТОКЕНЫ И БАЗОВАЯ ТЕМА (ТЕМНАЯ КЛИНИЧЕСКАЯ СТАНЦИЯ ОАРИТ)
+       Полностью автономный CSS без внешних зависимостей
+       ========================================================================= */
+    :root {
+      --bg-main: #090f1d;
+      --bg-card: #111a2e;
+      --bg-sub: #0c1425;
+      --bg-hover: #182540;
+      --border: #1e2d48;
+      --border-light: #2c3e60;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --cyan: #06b6d4;
+      --cyan-soft: rgba(6, 182, 212, 0.16);
+      --emerald: #10b981;
+      --emerald-soft: rgba(16, 185, 129, 0.16);
+      --amber: #f59e0b;
+      --amber-soft: rgba(245, 158, 11, 0.16);
+      --crimson: #ef4444;
+      --crimson-soft: rgba(239, 68, 68, 0.18);
+      --violet: #8b5cf6;
+      --violet-soft: rgba(139, 92, 246, 0.18);
+      --sky: #38bdf8;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Inter, Arial, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* Скроллбар */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-main); }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+    /* Контейнер */
+    .container {
+      width: 100%;
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 0 14px;
+    }
+
+    /* ==================== HEADER ==================== */
+    header.topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(9, 15, 29, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 0;
+    }
+
+    .topbar-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.22), rgba(16, 185, 129, 0.2));
+      border: 1px solid rgba(6, 182, 212, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #22d3ee;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.01em;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    /* Пресеты */
+    .presets-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .preset-btn {
+      appearance: none;
+      border: 1px solid var(--border-light);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      white-space: nowrap;
+    }
+
+    .preset-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--cyan);
+    }
+
+    .preset-btn.active {
+      background: rgba(6, 182, 212, 0.2);
+      border-color: var(--cyan);
+      color: #cffafe;
+      box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.35);
+    }
+
+    .preset-btn.p-rose { color: #fda4af; }
+    .preset-btn.p-amber { color: #fcd34d; }
+    .preset-btn.p-orange { color: #fdba74; }
+    .preset-btn.p-violet { color: #c4b5fd; }
+    .preset-btn.p-cyan { color: #67e8f9; }
+
+    /* ==================== MAIN LAYOUT ==================== */
+    main {
+      padding: 16px 0 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #f1f5f9;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .dot-cyan { background: var(--cyan); }
+    .dot-emerald { background: var(--emerald); }
+    .dot-amber { background: var(--amber); }
+    .dot-violet { background: var(--violet); }
+    .dot-sky { background: var(--sky); }
+    .dot-rose { background: var(--crimson); }
+
+    /* ==================== КРУГЛАЯ КНОПКА "!" (ИНФО-ТУЛТИП) ==================== */
+    .info-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(56, 189, 248, 0.55);
+      background: rgba(6, 182, 212, 0.14);
+      color: #38bdf8;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+      padding: 0;
+      cursor: pointer;
+      vertical-align: middle;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .info-btn:hover,
+    .info-btn:focus-visible,
+    .info-btn.active {
+      background: #06b6d4;
+      color: #090f1d;
+      border-color: #67e8f9;
+      transform: scale(1.1);
+      outline: none;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.65);
+    }
+
+    /* Плавающий умный тултип */
+    #globalTooltip {
+      position: fixed;
+      z-index: 9999;
+      width: min(330px, calc(100vw - 24px));
+      background: rgba(11, 19, 36, 0.98);
+      border: 1px solid rgba(56, 189, 248, 0.55);
+      border-radius: 13px;
+      padding: 12px 14px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(6, 182, 212, 0.15);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      color: #e2e8f0;
+      font-size: 12px;
+      line-height: 1.48;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(4px);
+      transition: opacity 0.16s ease, transform 0.16s ease;
+    }
+
+    #globalTooltip.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .tt-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .tt-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: #38bdf8;
+    }
+
+    .tt-norm {
+      display: inline-block;
+      margin-top: 2px;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 1px 6px;
+      border-radius: 5px;
+    }
+
+    .tt-close {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 15px;
+      cursor: pointer;
+      padding: 0 3px;
+      line-height: 1;
+    }
+    .tt-close:hover { color: #fff; }
+
+    .tt-body p { margin: 0 0 6px; }
+    .tt-body p:last-child { margin-bottom: 0; }
+    .tt-label { font-weight: 700; color: #f8fafc; }
+
+    /* ==================== 1. CELLULAR CANVAS SECTION ==================== */
+    .canvas-card {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .canvas-topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 11px 16px;
+      background: rgba(12, 20, 37, 0.92);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .canvas-hud-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hud-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border-radius: 8px;
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      font-size: 11px;
+    }
+
+    .hud-pill .k { color: var(--text-muted); }
+    .hud-pill .v { font-family: var(--font-mono); font-weight: 700; }
+
+    .btn-ghost {
+      appearance: none;
+      background: var(--bg-sub);
+      border: 1px solid var(--border-light);
+      color: var(--text-main);
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }
+    .btn-ghost:hover { border-color: var(--cyan); color: #fff; }
+
+    .canvas-wrap {
+      position: relative;
+      width: 100%;
+      height: 360px;
+      background: #081224;
+      user-select: none;
+    }
+
+    .canvas-wrap canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .canvas-overlay-badge {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      padding: 5px 10px;
+      border-radius: 9px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(9, 15, 29, 0.84);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(6, 182, 212, 0.5);
+      color: #67e8f9;
+      pointer-events: none;
+    }
+
+    .canvas-anaerobic-alert {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      padding: 5px 10px;
+      border-radius: 9px;
+      font-size: 11.5px;
+      font-weight: 700;
+      background: rgba(127, 29, 29, 0.88);
+      border: 1px solid rgba(248, 113, 113, 0.7);
+      color: #fecaca;
+      display: none;
+      pointer-events: none;
+    }
+
+    .canvas-legend {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    .legend-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 11px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: rgba(9, 15, 29, 0.8);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(30, 45, 72, 0.85);
+      font-size: 10.5px;
+      color: #cbd5e1;
+    }
+
+    .leg-item { display: inline-flex; align-items: center; gap: 4px; }
+    .leg-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+    /* ==================== 2. TWO-COLUMN MIDDLE GRID ==================== */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    @media (min-width: 1080px) {
+      .main-grid {
+        grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      }
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ==================== PHYSIOLOGICAL COUPLING BANNER ==================== */
+    .coupling-box {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.11), rgba(17, 26, 46, 0.95));
+      border: 1px solid rgba(6, 182, 212, 0.42);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .coupling-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .coupling-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .coupling-sub {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Красивый переключатель */
+    .switch-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .switch-input { display: none; }
+
+    .switch-track {
+      width: 46px;
+      height: 24px;
+      border-radius: 999px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .switch-track::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .switch-input:checked + .switch-track {
+      background: rgba(6, 182, 212, 0.35);
+      border-color: var(--cyan);
+    }
+
+    .switch-input:checked + .switch-track::after {
+      transform: translateX(22px);
+      background: #22d3ee;
+      box-shadow: 0 0 8px rgba(34, 211, 238, 0.7);
+    }
+
+    .switch-state-label {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #22d3ee;
+      min-width: 38px;
+    }
+
+    .causal-chain {
+      padding: 8px 11px;
+      border-radius: 9px;
+      background: rgba(9, 15, 29, 0.78);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      font-size: 12px;
+      color: #bae6fd;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+    }
+
+    .causal-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: rgba(6, 182, 212, 0.2);
+      color: #67e8f9;
+      flex-shrink: 0;
+    }
+
+    /* ==================== PRE-ANALYTICAL BAR ==================== */
+    .pre-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 10px;
+    }
+
+    .pre-item {
+      background: var(--bg-sub);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 11px;
+    }
+
+    .pre-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .pre-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #cbd5e1;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .seg-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .seg-btn {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 6px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .seg-btn.active-art {
+      background: rgba(6, 182, 212, 0.2);
+      border-color: rgba(6, 182, 212, 0.5);
+      color: #67e8f9;
+    }
+
+    .seg-btn.active-ven {
+      background: rgba(139, 92, 246, 0.22);
+      border-color: rgba(139, 92, 246, 0.5);
+      color: #d8b4fe;
+    }
+
+    /* ==================== PARAMETER ROWS & RULER SLIDERS ==================== */
+    .param-group-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 9px;
+    }
+
+    @media (min-width: 640px) {
+      .param-group-grid.two-col {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .param-row {
+      background: var(--bg-sub);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      transition: border-color 0.2s ease, box-shadow 0.25s ease, background 0.25s ease;
+      position: relative;
+    }
+
+    .param-row.st-warn { border-color: rgba(245, 158, 11, 0.42); }
+    .param-row.st-crit { border-color: rgba(239, 68, 68, 0.55); }
+
+    /* Подсветка авто-обновленных параметров при физиологической связи */
+    @keyframes autoFlash {
+      0% {
+        box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.85), inset 0 0 18px rgba(6, 182, 212, 0.2);
+        border-color: #22d3ee;
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+      }
+    }
+
+    .param-row.auto-updated {
+      animation: autoFlash 1.25s ease-out;
+    }
+
+    .auto-pill {
+      display: none;
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(6, 182, 212, 0.22);
+      color: #67e8f9;
+      border: 1px solid rgba(6, 182, 212, 0.45);
+    }
+
+    .param-row.show-auto-badge .auto-pill {
+      display: inline-block;
+    }
+
+    .param-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .param-name-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .param-label {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .param-ref {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-dim);
+    }
+
+    .param-right {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 5px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .sb-ok { background: var(--emerald-soft); color: #34d399; border-color: rgba(16, 185, 129, 0.35); }
+    .sb-warn { background: var(--amber-soft); color: #fbbf24; border-color: rgba(245, 158, 11, 0.42); }
+    .sb-crit { background: var(--crimson-soft); color: #f87171; border-color: rgba(239, 68, 68, 0.5); }
+
+    .num-input-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    input[type="number"].num-box {
+      width: 68px;
+      padding: 4px 6px;
+      border-radius: 7px;
+      background: var(--bg-main);
+      border: 1px solid var(--border-light);
+      color: #f8fafc;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      font-weight: 700;
+      text-align: right;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    input[type="number"].num-box:focus { border-color: var(--cyan); }
+
+    .unit-lbl {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-muted);
+      min-width: 38px;
+    }
+
+    /* Рулетка (Range slider + деления линейки) */
+    .ruler-wrap {
+      position: relative;
+      padding-bottom: 7px;
+    }
+
+    .ruler-ticks {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      bottom: 0;
+      height: 5px;
+      pointer-events: none;
+      background-image: repeating-linear-gradient(
+        to right,
+        rgba(148, 163, 184, 0.38) 0px,
+        rgba(148, 163, 184, 0.38) 1px,
+        transparent 1px,
+        transparent 9px
+      );
+      opacity: 0.65;
+    }
+
+    input[type="range"].ruler-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 9px;
+      border-radius: 999px;
+      outline: none;
+      cursor: pointer;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      background: #1e293b;
+    }
+
+    input[type="range"].ruler-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: #f8fafc;
+      border: 3px solid var(--cyan);
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.7);
+      cursor: grab;
+      transition: transform 0.12s ease;
+    }
+    input[type="range"].ruler-slider::-webkit-slider-thumb:active {
+      cursor: grabbing;
+      transform: scale(1.16);
+    }
+    input[type="range"].ruler-slider::-moz-range-thumb {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: #f8fafc;
+      border: 3px solid var(--cyan);
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.7);
+      cursor: grab;
+    }
+
+    /* ==================== CHARTS & INDICES ==================== */
+    .chart-box {
+      position: relative;
+      width: 100%;
+      height: 235px;
+    }
+
+    .chart-box canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .chart-note {
+      margin-top: 10px;
+      padding: 9px 11px;
+      border-radius: 10px;
+      background: var(--bg-sub);
+      border: 1px solid var(--border);
+      font-size: 11.5px;
+      color: #cbd5e1;
+      line-height: 1.48;
+    }
+
+    .indices-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 9px;
+    }
+
+    .idx-card {
+      background: var(--bg-sub);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .idx-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .idx-name {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .idx-val {
+      font-family: var(--font-mono);
+      font-size: 17px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .idx-val small {
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .idx-sub {
+      font-size: 10.5px;
+      color: var(--text-dim);
+      line-height: 1.35;
+    }
+
+    /* ==================== INTERPRETATION & RECOMMENDATIONS ==================== */
+    .summary-card {
+      border-width: 1.5px;
+      transition: border-color 0.25s ease;
+    }
+
+    .summary-card.s-ok { border-color: rgba(16, 185, 129, 0.45); }
+    .summary-card.s-warn { border-color: rgba(245, 158, 11, 0.55); }
+    .summary-card.s-crit {
+      border-color: rgba(239, 68, 68, 0.7);
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.14);
+    }
+
+    .summary-headline {
+      margin: 6px 0 0;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .terms-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .term-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--bg-sub);
+      border: 1px solid var(--border-light);
+      font-size: 11.5px;
+      color: #cbd5e1;
+    }
+
+    .interp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .interp-box {
+      background: var(--bg-sub);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 11px 12px;
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .interp-box h4 {
+      margin: 0 0 5px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .recs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 12px;
+    }
+
+    .rec-card {
+      border-radius: var(--radius-md);
+      padding: 13px 14px;
+      border: 1px solid var(--border);
+      background: var(--bg-sub);
+    }
+
+    .rec-card.r-crit { border-color: rgba(239, 68, 68, 0.5); background: rgba(127, 29, 29, 0.16); }
+    .rec-card.r-warn { border-color: rgba(245, 158, 11, 0.45); background: rgba(120, 53, 15, 0.14); }
+    .rec-card.r-info { border-color: rgba(6, 182, 212, 0.4); background: rgba(8, 51, 68, 0.2); }
+    .rec-card.r-ok { border-color: rgba(16, 185, 129, 0.4); background: rgba(6, 78, 59, 0.16); }
+
+    .rec-card h4 {
+      margin: 0 0 7px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .rec-card ul {
+      margin: 0;
+      padding-left: 17px;
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.52;
+    }
+
+    .rec-card li { margin-bottom: 4px; }
+    .rec-card li:last-child { margin-bottom: 0; }
+
+    /* ==================== DISCLAIMER ==================== */
+    .disclaimer {
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(245, 158, 11, 0.42);
+      background: rgba(120, 53, 15, 0.16);
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 12.5px;
+      color: #fde68a;
+      line-height: 1.52;
+    }
+
+    .disclaimer-icon {
+      flex-shrink: 0;
+      color: #fbbf24;
+      margin-top: 2px;
+    }
+
+    @media (max-width: 640px) {
+      .canvas-wrap { height: 320px; }
+      .brand h1 { font-size: 14.5px; }
+      .card { padding: 13px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Глобальный умный тултип (единый для всех кнопок "!") -->
+  <div id="globalTooltip" role="tooltip" aria-hidden="true">
+    <div class="tt-head">
+      <div>
+        <div id="ttTitle" class="tt-title"></div>
+        <div id="ttNorm" class="tt-norm"></div>
+      </div>
+      <button id="ttCloseBtn" class="tt-close" type="button" aria-label="Закрыть">✕</button>
+    </div>
+    <div id="ttBody" class="tt-body"></div>
+  </div>
+
+  <!-- ==================== 1. ВЕРХНЯЯ ПАНЕЛЬ + ПРЕСЕТЫ ==================== -->
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 3h6"/>
+            <path d="M10 3v6.2l-5.2 8.7A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-3.1L14 9.2V3"/>
+            <path d="M8.5 14h7"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Интерактивный симулятор КОС и клеточного метаболизма</h1>
+          <p>Рабочая станция ОАРИТ • Связь Гендерсона–Хассельбальха, Стюарта (SID), P₅₀ и карта Дэвенпорта</p>
+        </div>
+      </div>
+
+      <div class="presets-bar" id="presetsBar">
+        <button class="preset-btn active" data-preset="normal" type="button">Норма (АБГ)</button>
+        <button class="preset-btn p-rose" data-preset="analyzer_case" type="button">Кейс с анализатора</button>
+        <button class="preset-btn p-cyan" data-preset="hyperchloremic" type="button">Гиперхлоремич. ацидоз (0.9% NaCl)</button>
+        <button class="preset-btn p-amber" data-preset="copd" type="button">Остр. респ. ацидоз (ХОБЛ)</button>
+        <button class="preset-btn p-orange" data-preset="lactate_shock" type="button">Сепсис / Лактатацидоз</button>
+        <button class="preset-btn p-violet" data-preset="alkalosis" type="button">Метаб. алкалоз</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ==================== 2. 2D CANVAS: КЛЕТОЧНЫЙ МЕТАБОЛИЗМ ==================== -->
+    <section class="card canvas-card">
+      <div class="canvas-topbar">
+        <div class="section-title">
+          <span class="dot dot-emerald"></span>
+          Клеточный метаболизм и межклеточное пространство
+          <button class="info-btn" type="button" data-info="cell_sim" aria-label="Информация о клеточном метаболизме">!</button>
+        </div>
+
+        <div class="canvas-hud-row">
+          <div class="hud-pill">
+            <span class="k">Ферменты:</span>
+            <span id="hudEnzyme" class="v" style="color:#34d399;">100%</span>
+          </div>
+          <div class="hud-pill">
+            <span class="k">Синтез АТФ:</span>
+            <span id="hudAtp" class="v" style="color:#22d3ee;">100%</span>
+          </div>
+          <div class="hud-pill">
+            <span class="k">Обмен H⁺/K⁺:</span>
+            <span id="hudShift" class="v" style="color:#34d399;">Баланс</span>
+          </div>
+          <button id="pauseAnimBtn" class="btn-ghost" type="button">
+            <span id="pauseIcon">⏸</span>
+            <span id="pauseText">Пауза</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="cellCanvasWrap" class="canvas-wrap">
+        <canvas id="cellCanvas"></canvas>
+        <div id="canvasAnaerobicAlert" class="canvas-anaerobic-alert">⚠ Анаэробный сдвиг: дефицит O₂ / рост лактата</div>
+        <div id="hudPhBadge" class="canvas-overlay-badge">pH 7.40 • НОРМА</div>
+
+        <div class="canvas-legend">
+          <div class="legend-strip">
+            <span class="leg-item"><span class="leg-dot" style="background:#38bdf8"></span>O₂</span>
+            <span class="leg-item"><span class="leg-dot" style="background:#c084fc"></span>CO₂</span>
+            <span class="leg-item"><span class="leg-dot" style="background:#ef4444"></span>H⁺</span>
+            <span class="leg-item"><span class="leg-dot" style="background:#22d3ee"></span>HCO₃⁻</span>
+            <span class="leg-item"><span class="leg-dot" style="background:#facc15"></span>K⁺</span>
+            <span class="leg-item"><span class="leg-dot" style="background:#94a3b8"></span>Na⁺/Cl⁻</span>
+            <span class="leg-item"><span class="leg-dot" style="background:#e0f2fe"></span>Ca²⁺</span>
+            <span class="leg-item"><span class="leg-dot" style="background:#34d399"></span>Глюкоза</span>
+            <span class="leg-item"><span class="leg-dot" style="background:#fde047;box-shadow:0 0 6px #fde047"></span>АТФ</span>
+          </div>
+          <div id="hudCapLabel" class="legend-strip" style="font-family:var(--font-mono);color:#94a3b8;">
+            Капилляр: Hb 140 г/л • sO₂ 97.5%
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3. СРЕДНИЙ БЛОК: ВВОД ДАННЫХ + ГРАФИКИ И ИНДЕКСЫ ==================== -->
+    <section class="main-grid">
+
+      <!-- ЛЕВАЯ КОЛОНКА: ДВИЖОК СВЯЗЕЙ + ПРЕАНАЛИТИКА + ПАРАМЕТРЫ -->
+      <div class="stack">
+
+        <!-- Движок физиологических связей + Преаналитика -->
+        <div class="card stack" style="gap:12px;">
+          <!-- Переключатель физиологической связи -->
+          <div class="coupling-box">
+            <div class="coupling-top">
+              <div>
+                <div class="coupling-title">
+                  Физиологическая связь параметров
+                  <button class="info-btn" type="button" data-info="coupling" aria-label="О физиологической связи">!</button>
+                </div>
+                <div id="couplingSubText" class="coupling-sub">
+                  ВКЛ — изменение pCO₂, Cl⁻, HCO₃⁻, лактата или pH автоматически пересчитывает зависимые показатели
+                </div>
+              </div>
+              <label class="switch-wrap">
+                <input id="couplingSwitch" class="switch-input" type="checkbox" checked />
+                <span class="switch-track"></span>
+                <span id="couplingStateLabel" class="switch-state-label">ВКЛ</span>
+              </label>
+            </div>
+            <div class="causal-chain">
+              <span class="causal-tag">Цепочка влияния</span>
+              <span id="causalChainText">Сдвиньте любой ползунок (например, pCO₂ или Cl⁻), чтобы увидеть физиологическую реакцию системы.</span>
+            </div>
+          </div>
+
+          <!-- Преаналитические параметры -->
+          <div class="pre-grid">
+            <!-- Тип крови -->
+            <div class="pre-item">
+              <div class="pre-head">
+                <span class="pre-label">
+                  Тип пробы
+                  <button class="info-btn" type="button" data-info="sample_type">!</button>
+                </span>
+              </div>
+              <div class="seg-toggle">
+                <button id="btnArterial" class="seg-btn active-art" type="button">Артерия (АБГ)</button>
+                <button id="btnVenous" class="seg-btn" type="button">Вена (ВБГ)</button>
+              </div>
+            </div>
+
+            <!-- Температура -->
+            <div class="pre-item">
+              <div class="pre-head">
+                <span class="pre-label">
+                  Температура
+                  <button class="info-btn" type="button" data-info="temp">!</button>
+                </span>
+                <div class="num-input-wrap">
+                  <input id="num_temp" class="num-box" style="width:58px" type="number" step="0.1" min="32" max="42" value="37.0" />
+                  <span class="unit-lbl" style="min-width:22px">°C</span>
+                </div>
+              </div>
+              <div class="ruler-wrap">
+                <input id="rng_temp" class="ruler-slider" type="range" step="0.1" min="32" max="42" value="37.0" />
+                <div class="ruler-ticks"></div>
+              </div>
+            </div>
+
+            <!-- FiO2 -->
+            <div class="pre-item">
+              <div class="pre-head">
+                <span class="pre-label">
+                  FiO₂
+                  <button class="info-btn" type="button" data-info="fio2">!</button>
+                </span>
+                <div class="num-input-wrap">
+                  <input id="num_fio2" class="num-box" style="width:58px" type="number" step="1" min="21" max="100" value="21" />
+                  <span class="unit-lbl" style="min-width:22px">%</span>
+                </div>
+              </div>
+              <div class="ruler-wrap">
+                <input id="rng_fio2" class="ruler-slider" type="range" step="1" min="21" max="100" value="21" />
+                <div class="ruler-ticks"></div>
+              </div>
+            </div>
+
+            <!-- Масса тела -->
+            <div class="pre-item">
+              <div class="pre-head">
+                <span class="pre-label">
+                  Масса тела
+                  <button class="info-btn" type="button" data-info="weight">!</button>
+                </span>
+                <div class="num-input-wrap">
+                  <input id="num_weight" class="num-box" style="width:58px" type="number" step="1" min="30" max="150" value="70" />
+                  <span class="unit-lbl" style="min-width:22px">кг</span>
+                </div>
+              </div>
+              <div class="ruler-wrap">
+                <input id="rng_weight" class="ruler-slider" type="range" step="1" min="30" max="150" value="70" />
+                <div class="ruler-ticks"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Группы параметров анализатора (генерируются JS) -->
+        <div id="parametersContainer" class="stack"></div>
+      </div>
+
+      <!-- ПРАВАЯ КОЛОНКА: ГРАФИКИ И РАСЧЕТНЫЕ ИНДЕКСЫ -->
+      <div class="stack">
+
+        <!-- График 1: Кривая диссоциации HbO2 и P50 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="section-title">
+              <span class="dot dot-sky"></span>
+              Кривая диссоциации HbO₂ и P₅₀
+              <button class="info-btn" type="button" data-info="chart_p50">!</button>
+            </div>
+            <span id="p50Badge" class="status-badge sb-ok" style="font-family:var(--font-mono);">P₅₀ = 26.8 mmHg</span>
+          </div>
+          <div class="chart-box">
+            <canvas id="p50Canvas"></canvas>
+          </div>
+          <div id="p50Explanation" class="chart-note"></div>
+        </div>
+
+        <!-- График 2: Диаграмма Дэвенпорта -->
+        <div class="card">
+          <div class="card-header">
+            <div class="section-title">
+              <span class="dot dot-violet"></span>
+              Диаграмма Дэвенпорта (HCO₃⁻ vs pH)
+              <button class="info-btn" type="button" data-info="chart_davenport">!</button>
+            </div>
+            <span id="davenportZoneBadge" class="status-badge sb-ok" style="font-family:var(--font-mono);">Зона нормы</span>
+          </div>
+          <div class="chart-box">
+            <canvas id="davenportCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Расчетные индексы -->
+        <div class="card">
+          <div class="card-header">
+            <div class="section-title">
+              <span class="dot dot-emerald"></span>
+              Расчетные клинические индексы
+            </div>
+          </div>
+
+          <div class="indices-grid">
+            <!-- AG -->
+            <div class="idx-card">
+              <div class="idx-top">
+                <span class="idx-name">Анионная разница (AG) <button class="info-btn" type="button" data-info="idx_ag">!</button></span>
+                <span id="calcAgStatus" class="status-badge sb-ok">Норма</span>
+              </div>
+              <div id="calcAgVal" class="idx-val">14.0 <small>ммоль/л</small></div>
+              <div id="calcAgNote" class="idx-sub">Na − (Cl + HCO₃⁻) • норма 8–12</div>
+            </div>
+
+            <!-- Stewart SID -->
+            <div class="idx-card">
+              <div class="idx-top">
+                <span class="idx-name">SID по Стюарту <button class="info-btn" type="button" data-info="idx_sid">!</button></span>
+                <span id="calcSidStatus" class="status-badge sb-ok">Норма</span>
+              </div>
+              <div id="calcSidVal" class="idx-val">42.2 <small>ммоль/л</small></div>
+              <div id="calcSidNote" class="idx-sub">Na⁺ + K⁺ − Cl⁻ • норма 40–44</div>
+            </div>
+
+            <!-- P50 -->
+            <div class="idx-card">
+              <div class="idx-top">
+                <span class="idx-name">Индекс P₅₀ <button class="info-btn" type="button" data-info="idx_p50">!</button></span>
+                <span id="calcP50Status" class="status-badge sb-ok">Норма</span>
+              </div>
+              <div id="calcP50Val" class="idx-val">26.8 <small>mmHg</small></div>
+              <div id="calcP50Note" class="idx-sub">Эффект Бора и температуры</div>
+            </div>
+
+            <!-- PaO2 / FiO2 -->
+            <div class="idx-card">
+              <div class="idx-top">
+                <span class="idx-name">Индекс Горовица (P/F) <button class="info-btn" type="button" data-info="idx_pf">!</button></span>
+                <span id="calcPfStatus" class="status-badge sb-ok">Норма</span>
+              </div>
+              <div id="calcPfVal" class="idx-val">452 <small>mmHg</small></div>
+              <div id="calcPfNote" class="idx-sub">PaO₂ / FiO₂ • норма &gt; 400</div>
+            </div>
+
+            <!-- Формула Винтера -->
+            <div class="idx-card">
+              <div class="idx-top">
+                <span class="idx-name">Ожид. pCO₂ (Винтер) <button class="info-btn" type="button" data-info="idx_winter">!</button></span>
+                <span id="calcWinterStatus" class="status-badge sb-ok">Справка</span>
+              </div>
+              <div id="calcWinterVal" class="idx-val">44.0 ± 2 <small>mmHg</small></div>
+              <div id="calcWinterNote" class="idx-sub">1.5·HCO₃⁻ + 8 ± 2</div>
+            </div>
+
+            <!-- Скорректированный Na+ -->
+            <div class="idx-card">
+              <div class="idx-top">
+                <span class="idx-name">Скоррект. Na⁺ (Катц) <button class="info-btn" type="button" data-info="idx_corr_na">!</button></span>
+              </div>
+              <div id="calcCorrNaVal" class="idx-val" style="color:#67e8f9;">140.0 <small>ммоль/л</small></div>
+              <div class="idx-sub">При гипергликемии &gt; 5.6</div>
+            </div>
+
+            <!-- Дефицит HCO3- -->
+            <div class="idx-card" style="grid-column: 1 / -1;">
+              <div class="idx-top">
+                <span class="idx-name">Расчетный дефицит HCO₃⁻ (на массу тела) <button class="info-btn" type="button" data-info="idx_deficit">!</button></span>
+                <span id="calcDeficitStatus" class="status-badge sb-ok">Нет дефицита</span>
+              </div>
+              <div id="calcDeficitVal" class="idx-val">0 <small>ммоль (0 мл 4% NaHCO₃)</small></div>
+              <div id="calcDeficitNote" class="idx-sub">Формула: 0.3 × вес (кг) × |BE| (вводят не более ½ расчетной дозы при pH &lt; 7.15)</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== 4. ИНТЕРПРЕТАЦИЯ И РЕКОМЕНДАЦИИ ==================== -->
+    <section class="stack">
+
+      <!-- Итоговое клиническое заключение -->
+      <div id="summaryBanner" class="card summary-card s-ok">
+        <div class="card-header" style="margin-bottom:4px;">
+          <span class="section-title">
+            <span class="dot dot-cyan"></span>
+            Клиническая интерпретация анализа КОС
+          </span>
+          <span id="summaryBloodBadge" class="status-badge sb-ok" style="font-family:var(--font-mono);">Артериальная кровь (АБГ)</span>
+        </div>
+
+        <p id="summaryHeadline" class="summary-headline" style="color:#34d399;"></p>
+
+        <!-- Справочные термины с кнопками "!" -->
+        <div class="terms-strip">
+          <span class="term-chip">Эффект Бора <button class="info-btn" type="button" data-info="term_bohr">!</button></span>
+          <span class="term-chip">Модель Стюарта / SID <button class="info-btn" type="button" data-info="term_stewart">!</button></span>
+          <span class="term-chip">Анионная разница (HAGMA/NAGMA) <button class="info-btn" type="button" data-info="idx_ag">!</button></span>
+          <span class="term-chip">Компенсация КЩС <button class="info-btn" type="button" data-info="term_comp">!</button></span>
+        </div>
+
+        <div class="interp-grid">
+          <div class="interp-box">
+            <h4 style="color:#22d3ee;">1. КЩС и компенсация</h4>
+            <div id="interpAcidBase"></div>
+          </div>
+          <div class="interp-box">
+            <h4 style="color:#38bdf8;">2. Оксигенация и транспорт O₂</h4>
+            <div id="interpOxygen"></div>
+          </div>
+          <div class="interp-box">
+            <h4 style="color:#fbbf24;">3. Электролиты и SID</h4>
+            <div id="interpElectrolytes"></div>
+          </div>
+          <div class="interp-box">
+            <h4 style="color:#34d399;">4. Метаболиты и осмолярность</h4>
+            <div id="interpMetabolites"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Алгоритмы коррекции -->
+      <div class="card">
+        <div class="card-header">
+          <div class="section-title">
+            <span class="dot dot-amber"></span>
+            Ориентировочные алгоритмы коррекции (ОАРИТ)
+          </div>
+          <span id="recWeightTag" style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-muted);">Расчет на 70 кг</span>
+        </div>
+        <div id="recommendationsList" class="recs-grid"></div>
+      </div>
+
+      <!-- ЮРИДИЧЕСКИЙ ДИСКЛЕЙМЕР -->
+      <footer class="disclaimer">
+        <div class="disclaimer-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div>
+          <strong>Внимание:</strong> Данная симуляция и приведенные алгоритмы коррекции носят исключительно образовательный и рекомендательный характер. Разработчик не несет ответственности за клинические решения; окончательная диагностика и выбор тактики лечения всегда остаются за лечащим врачом-специалистом.
+        </div>
+      </footer>
+
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* =========================================================================
+         1. СПРАВОЧНИК МЕДИЦИНСКИХ ПОДСКАЗОК ДЛЯ КНОПОК "!"
+         ========================================================================= */
+      const INFO_DB = {
+        cell_sim: {
+          title: 'Зачем организму pH 7.35–7.45?',
+          norm: 'Коридор жизни: 7.35 – 7.45',
+          phys: 'Все ферменты клеточного метаболизма — это белки, чья 3D-форма держится на водородных и ионных связях. Отклонение концентрации H⁺ меняет заряд белка и «ломает» работу ферментов.',
+          clin: 'При ацидозе падает синтез АТФ, слабеет миокард, а H⁺ заходит в клетку, вытесняя K⁺ в кровь (гиперкалиемия). При алкалозе падает свободный Ca²⁺ (судороги, спазмы) и Hb хуже отдает O₂ тканям.'
+        },
+        coupling: {
+          title: 'Движок физиологической связи',
+          norm: 'ВКЛ = живая модель • ВЫКЛ = бланк',
+          phys: 'Объединяет уравнение Гендерсона–Хассельбальха (pH ↔ pCO₂ / HCO₃⁻), модель Стюарта (SID = Na⁺ + K⁺ − Cl⁻), буферизацию лактата, трансмембранный обмен H⁺/K⁺, связывание Ca²⁺ с альбумином и эффект Бора (P₅₀/sO₂).',
+          clin: 'Включите для обучения и демонстрации причинно-следственных связей; выключите, чтобы свободно ввести точные цифры с бумажного бланка анализатора.'
+        },
+        sample_type: {
+          title: 'Тип пробы (АБГ vs ВБГ)',
+          norm: 'АБГ: pH 7.35–7.45 | ВБГ: pH 7.31–7.41',
+          phys: 'Венозная кровь уже отдала O₂ тканям и забрала CO₂, поэтому в ней pH на ~0.03–0.04 ниже, pCO₂ на ~4–6 mmHg выше, а pO₂ и sO₂ значительно ниже артериальных.',
+          clin: 'Для оценки оксигенации легких (PaO₂/FiO₂) нужна артериальная кровь; для первичного скрининга КЩС и электролитов часто допустима ВБГ.'
+        },
+        temp: {
+          title: 'Температура тела пациента',
+          norm: '36.2 – 37.2 °C',
+          phys: 'Гипертермия ускоряет метаболизм и сдвигает кривую диссоциации HbO₂ вправо (рост P₅₀ — легче отдача O₂). Гипотермия сдвигает кривую влево.',
+          clin: 'Важна для точной оценки P₅₀ и газового состава при лихорадке, сепсисе или терапевтической гипотермии.'
+        },
+        fio2: {
+          title: 'FiO₂ (Фракция вдыхаемого O₂)',
+          norm: 'Воздух: 21% | Оксигенотерапия: до 100%',
+          phys: 'Определяет парциальное давление кислорода в альвеолах и служит знаменателем для расчета индекса оксигенации PaO₂/FiO₂.',
+          clin: 'Обязательно указывайте реальную FiO₂ пациента (на ИВЛ или маске), иначе оценка гипоксемии будет ошибочной.'
+        },
+        weight: {
+          title: 'Масса тела пациента',
+          norm: 'Расчетная база (кг)',
+          phys: 'Используется для оценки объема распределения внеклеточной жидкости (около 30% массы тела для бикарбоната и 40% для оценки дефицита калия).',
+          clin: 'Позволяет рассчитать ориентировочные дозы NaHCO₃ и KCl в алгоритмах коррекции.'
+        },
+        pH: {
+          title: 'pH крови (водородный показатель)',
+          norm: 'АБГ: 7.35–7.45 | ВБГ: 7.31–7.41',
+          phys: 'Отрицательный логарифм концентрации ионов H⁺. Интегральный показатель баланса дыхательного (pCO₂) и метаболического (HCO₃⁻) компонентов.',
+          clin: 'pH < 7.35 — ацидемия; pH > 7.45 — алкалемия. Значения < 7.15 или > 7.60 угрожают жизни (аритмии, коллапс, угнетение ЦНС).'
+        },
+        pCO2: {
+          title: 'pCO₂ (Парциальное давление CO₂)',
+          norm: 'АБГ: 35–45 | ВБГ: 41–51 mmHg',
+          phys: 'Дыхательный (легочный) компонент КОС. CO₂ соединяется с водой, образуя угольную кислоту (H₂CO₃ → H⁺ + HCO₃⁻). Регулируется минутной вентиляцией легких.',
+          clin: '↑ pCO₂ (гиперкапния) → ↓ pH (респираторный ацидоз при гиповентиляции, ХОБЛ, угнетении дыхания). ↓ pCO₂ → ↑ pH (гипервентиляция).'
+        },
+        pO2: {
+          title: 'pO₂ (Парциальное давление O₂)',
+          norm: 'АБГ: 80–100 | ВБГ: 35–45 mmHg',
+          phys: 'Отражает количество кислорода, физически растворенного в плазме, и движущую силу диффузии O₂ к гемоглобину и тканям.',
+          clin: 'Падение PaO₂ < 60 mmHg — критический порог дыхательной недостаточности (крутой спад кривой насыщения гемоглобина).'
+        },
+        cHCO3: {
+          title: 'cHCO₃⁻ (Бикарбонат плазмы)',
+          norm: 'АБГ: 22–26 | ВБГ: 23–27 mmol/L',
+          phys: 'Главный метаболический (почечный) буфер крови, нейтрализующий нелетучие кислоты (лактат, кетоны и др.).',
+          clin: '↓ HCO₃⁻ → метаболический ацидоз (или компенсация респ. алкалоза). ↑ HCO₃⁻ → метаболический алкалоз (или компенсация хрон. гиперкапнии).'
+        },
+        cBase: {
+          title: 'cBase / BE (Избыток оснований)',
+          norm: '−2.0 … +2.0 mmol/L',
+          phys: 'Количество кислоты или щелочи, нужное для приведения 1 л крови к pH 7.40 при стандартном pCO₂ 40 mmHg. Не зависит от острого изменения дыхания.',
+          clin: 'Чистый маркер метаболического компонента: BE < −2 — дефицит оснований (мет. ацидоз), BE > +2 — избыток оснований (мет. алкалоз).'
+        },
+        mOsm: {
+          title: 'mOsm,c (Расчетная осмолярность)',
+          norm: '275 – 295 mmol/kg',
+          phys: 'Определяет осмотическое давление плазмы и движение воды между клетками и сосудами. Расчет: 2×Na⁺ + Глюкоза + Мочевина (~5).',
+          clin: 'Гиперосмолярность (>300) вызывает дегидратацию клеток (включая нейроны); гипоосмолярность (<270) грозит отеком мозга.'
+        },
+        cK: {
+          title: 'cK⁺ (Калий плазмы)',
+          norm: '3.5 – 5.1 mmol/L',
+          phys: 'Главный внутриклеточный катион, определяющий потенциал покоя кардиомиоцитов. Тесно связан с pH через обмен H⁺/K⁺: снижение pH на 0.1 повышает K⁺ на ~0.5 ммоль/л.',
+          clin: 'K⁺ ≥ 6.5 — риск фибрилляции желудочков и асистолии (экстренно Ca²⁺ глюконат + инсулин/глюкоза). K⁺ < 3.0 — риск тахиаритмий и пареза.'
+        },
+        cNa: {
+          title: 'cNa⁺ (Натрий плазмы)',
+          norm: '135 – 145 mmol/L',
+          phys: 'Главный внеклеточный катион, определяющий осмолярность и разницу сильных ионов (SID = Na⁺ + K⁺ − Cl⁻).',
+          clin: 'Гипонатриемия (<130) грозит отеком мозга; при гипергликемии оценивайте скорректированный Na⁺ по формуле Катца.'
+        },
+        cCa: {
+          title: 'cCa²⁺ (Ионизированный кальций)',
+          norm: '1.12 – 1.32 mmol/L',
+          phys: 'Физиологически активная фракция кальция для сокращения сердца, тонуса сосудов и свертывания. Ацидоз вытесняет Ca²⁺ с альбумина (Ca²⁺ растет), алкалоз — связывает (Ca²⁺ падает).',
+          clin: 'Ca²⁺ < 0.90–1.00 — риск тетании, судорог, удлинения QT и снижения сократимости миокарда.'
+        },
+        cCl: {
+          title: 'cCl⁻ (Хлориды плазмы)',
+          norm: '98 – 107 mmol/L',
+          phys: 'Главный сильный анион плазмы. По модели Стюарта (SID = Na⁺ + K⁺ − Cl⁻) рост Cl⁻ напрямую снижает SID, уменьшая HCO₃⁻ и закисляя кровь!',
+          clin: 'Избыток 0.9% NaCl (154 ммоль/л Cl⁻) вызывает гиперхлоремический метаболический ацидоз (NAGMA). Потеря Cl⁻ (рвота, фуросемид) вызывает метаболический алкалоз.'
+        },
+        sO2: {
+          title: 'sO₂ (Сатурация гемоглобина O₂)',
+          norm: 'АБГ: 95–100% | ВБГ: 70–75%',
+          phys: 'Процент гемоглобина, связанного с кислородом. Определяется pO₂ и положением кривой диссоциации (P₅₀).',
+          clin: 'В АБГ <90% — выраженная гипоксемия. В ВБГ (ScvO₂) <65% — признак высокой экстракции O₂ при шоке или низком сердечном выбросе.'
+        },
+        ctHb: {
+          title: 'ctHb (Общий гемоглобин)',
+          norm: '120 – 165 g/L',
+          phys: 'Основной переносчик кислорода (1 г Hb переносит 1.34 мл O₂) и мощный внутриклеточный буфер для H⁺.',
+          clin: 'Даже при sO₂ 100% тяжелая анемия (Hb < 70–80 г/л) резко снижает доставку кислорода (DO₂) к тканям.'
+        },
+        FMetHb: {
+          title: 'FMetHb (Фракция метгемоглобина)',
+          norm: '0.0 – 1.5%',
+          phys: 'Окисленная форма гемоглобина (Fe³⁺), не способная переносить O₂ и сдвигающая кривую оставшегося Hb влево.',
+          clin: 'Повышается при передозировке местных анестетиков (лидокаин/бензокаин), нитратов. >15–20% — «шоколадная» кровь, показан метиленовый синий.'
+        },
+        cLac: {
+          title: 'cLac (Лактат плазмы)',
+          norm: '0.5 – 2.0 mmol/L',
+          phys: 'Продукт анаэробного гликолиза при тканевой гипоксии или стрессорном гиперметаболизме. Накопление лактата расходует бикарбонат (HCO₃⁻) почти 1:1.',
+          clin: 'Лактат > 2.0 — маркер гипоперфузии; > 4.0 — тяжелый лактатацидоз (септический/кардиогенный шок), требует немедленной ресусцитации.'
+        },
+        cGlu: {
+          title: 'cGlu (Глюкоза плазмы)',
+          norm: '3.9 – 6.1 mmol/L (ОАРИТ до 10.0)',
+          phys: 'Основной энергетический субстрат клеток и осмотически активное вещество, повышающее осмолярность плазмы.',
+          clin: 'Гипогликемия (<3.9) экстренно опасна для мозга. Выраженная гипергликемия (>15) с ацидозом требует исключения ДКА.'
+        },
+        ctBil: {
+          title: 'ctBil (Общий билирубин)',
+          norm: '0 – 21 мкмоль/л',
+          phys: 'Продукт распада гема, выводимый печенью. На газоанализаторах измеряется спектрофотометрически.',
+          clin: 'Повышение указывает на дисфункцию печени (компонент шкалы SOFA при сепсисе), холестаз или гемолиз.'
+        },
+        chart_p50: {
+          title: 'Кривая диссоциации HbO₂ и P₅₀',
+          norm: 'Норма P₅₀ = 26.8 mmHg',
+          phys: 'S-образная зависимость между pO₂ и насыщением гемоглобина (sO₂). P₅₀ — это pO₂, при котором гемоглобин насыщен ровно на 50%.',
+          clin: 'Сдвиг вправо (↑ P₅₀ при ацидозе, гиперкапнии, лихорадке) облегчает отдачу O₂ тканям. Сдвиг влево (↓ P₅₀ при алкалозе, гипотермии) затрудняет отдачу O₂.'
+        },
+        chart_davenport: {
+          title: 'Диаграмма Дэвенпорта',
+          norm: 'Зеленая зона: pH 7.35–7.45, HCO₃⁻ 22–26',
+          phys: 'Графическая карта уравнения Гендерсона–Хассельбальха: связывает pH (ось X), HCO₃⁻ (ось Y) и изотермические кривые pCO₂ (изобары 20, 40, 60, 80 mmHg).',
+          clin: 'Позволяет мгновенно увидеть тип нарушения (респираторный, метаболический или смешанный) и траекторию компенсации.'
+        },
+        idx_ag: {
+          title: 'Анионная разница (Anion Gap, AG)',
+          norm: '8 – 12 mmol/L',
+          phys: 'Формула: Na⁺ − (Cl⁻ + HCO₃⁻). Отражает концентрацию «неизмеряемых» анионов плазмы (альбумин, лактат, кетоны, сульфаты, токсины).',
+          clin: 'AG > 14 — ацидоз с высокой анионной разницей (HAGMA: лактатацидоз, ДКА, ОПП, отравления). Нормальный AG при ацидозе (NAGMA) — гиперхлоремия или потеря HCO₃⁻.'
+        },
+        idx_sid: {
+          title: 'SID по Стюарту (Разница сильных ионов)',
+          norm: '40 – 44 mmol/L',
+          phys: 'Упрощенная формула: Na⁺ + K⁺ − Cl⁻. Согласно физико-химической модели П. Стюарта, именно SID (наряду с pCO₂ и альбумином) определяет pH и HCO₃⁻.',
+          clin: '↓ SID (избыток Cl⁻ от 0.9% NaCl) вызывает метаболический ацидоз. ↑ SID (потеря Cl⁻ при рвоте/диуретиках) вызывает метаболический алкалоз.'
+        },
+        idx_p50: {
+          title: 'P₅₀ (Половина насыщения Hb)',
+          norm: '25.0 – 28.5 mmHg (эталон 26.8)',
+          phys: 'Рассчитывается по Северингаусу с учетом pH, температуры и BE.',
+          clin: 'Рост P₅₀ > 28.5 — снижение сродства Hb к O₂ (сдвиг вправо); падение < 25.0 — сдвиг влево (риск тканевой гипоксии при нормальном SpO₂).'
+        },
+        idx_pf: {
+          title: 'Индекс Горовица (PaO₂ / FiO₂)',
+          norm: '> 400 mmHg (только для АБГ)',
+          phys: 'Отношение артериального PaO₂ к доле кислорода во вдыхаемом воздухе (например, 95 / 0.21 = 452).',
+          clin: 'Берлинские критерии ОРДС: 200–300 — легкий, 100–200 — среднетяжелый, <100 — тяжелый ОРДС.'
+        },
+        idx_winter: {
+          title: 'Формула Винтера (Ожидаемый pCO₂)',
+          norm: 'pCO₂ = 1.5 × HCO₃⁻ + 8 ± 2 mmHg',
+          phys: 'Определяет, насколько глубоко легкие должны снизить pCO₂, чтобы адекватно компенсировать метаболический ацидоз.',
+          clin: 'Если фактический pCO₂ выше расчетного — присоединился респираторный ацидоз (истощение дыхания). Если ниже — сопутствующий респираторный алкалоз.'
+        },
+        idx_corr_na: {
+          title: 'Скорректированный Na⁺ (формула Катца)',
+          norm: '135 – 145 mmol/L',
+          phys: 'Высокая глюкоза притягивает воду из клеток в сосуды, искусственно «разбавляя» натрий (псевдогипонатриемия).',
+          clin: 'При Glu > 5.6 ммоль/л прибавляйте +0.288 ммоль/л Na⁺ на каждый 1 ммоль/л глюкозы сверх 5.55.'
+        },
+        idx_deficit: {
+          title: 'Расчетный дефицит HCO₃⁻',
+          norm: '0.3 × масса (кг) × |BE|',
+          phys: 'Показывает общий недостаток буферных оснований во внеклеточном пространстве при метаболическом ацидозе.',
+          clin: 'При решении о введении соды (обычно при pH < 7.15) вводят не более ½ расчетной дозы медленно и только при адекватной вентиляции легких!'
+        },
+        term_bohr: {
+          title: 'Эффект Бора',
+          norm: 'Связь pH/CO₂ и отдачи O₂',
+          phys: 'В работающих тканях, где много CO₂ и H⁺ (ниже pH), гемоглобин меняет форму и легче отдает кислород (сдвиг кривой вправо).',
+          clin: 'При системном алкалозе эффект обратный: гемоглобин «жадничает» и не отдает O₂ клеткам.'
+        },
+        term_stewart: {
+          title: 'Модель Стюарта (Роль хлора Cl⁻)',
+          norm: 'Независимые факторы: pCO₂, SID, Atot',
+          phys: 'Объясняет, почему инфузия больших объемов «физиологического» 0.9% NaCl (где Cl⁻ = 154 ммоль/л, SID = 0) закисляет кровь: рост Cl⁻ сжимает SID и вытесняет HCO₃⁻.',
+          clin: 'Поэтому в ОАРИТ при массивной инфузии предпочитают сбалансированные кристаллоиды (Стерофундин, Плазма-Лит, Рингер).'
+        },
+        term_comp: {
+          title: 'Компенсация нарушений КЩС',
+          norm: 'Дыхательная (минуты) • Почечная (дни)',
+          phys: 'Организм всегда стремится вернуть pH к 7.40: на метаболический сдвиг легкие отвечают изменением ЧД за минуты, на дыхательный — почки отвечают задержкой/выведением HCO₃⁻ за 2–5 суток.',
+          clin: 'Компенсация почти никогда не бывает «сверхнормы». Если pH вышел за 7.35–7.45 — состояние декомпенсированное.'
+        }
+      };
+
+      /* =========================================================================
+         2. СОСТОЯНИЕ, РЕФЕРЕНСЫ, ГРУППЫ ПАРАМЕТРОВ И ПРЕСЕТЫ
+         ========================================================================= */
+      const state = {
+        bloodType: 'arterial',
+        coupling: true, // ВКЛ по умолчанию!
+        paused: false,
+        temp: 37.0,
+        fio2: 21,
+        weight: 70,
+        pH: 7.40,
+        pCO2: 40.0,
+        pO2: 95.0,
+        cHCO3: 24.0,
+        cBase: 0.0,
+        mOsm: 290.2,
+        cK: 4.2,
+        cNa: 140,
+        cCa: 1.20,
+        cCl: 102,
+        sO2: 97.5,
+        ctHb: 140,
+        FMetHb: 0.5,
+        cLac: 1.0,
+        cGlu: 5.2,
+        ctBil: 10
+      };
+
+      const RANGES = {
+        arterial: {
+          pH:     { min: 7.35, max: 7.45, critLow: 7.15, critHigh: 7.60 },
+          pCO2:   { min: 35.0, max: 45.0, critLow: 20.0, critHigh: 65.0 },
+          pO2:    { min: 80.0, max: 100.0, critLow: 55.0, critHigh: 250.0 },
+          cHCO3:  { min: 22.0, max: 26.0, critLow: 12.0, critHigh: 38.0 },
+          cBase:  { min: -2.0, max: 2.0,  critLow: -10.0, critHigh: 10.0 },
+          mOsm:   { min: 275,  max: 295,  critLow: 260,  critHigh: 320 },
+          cK:     { min: 3.5,  max: 5.1,  critLow: 2.8,  critHigh: 6.5 },
+          cNa:    { min: 135,  max: 145,  critLow: 122,  critHigh: 160 },
+          cCa:    { min: 1.12, max: 1.32, critLow: 0.90, critHigh: 1.55 },
+          cCl:    { min: 98,   max: 107,  critLow: 85,   critHigh: 118 },
+          sO2:    { min: 95.0, max: 100.0, critLow: 85.0, critHigh: 101.0 },
+          ctHb:   { min: 120,  max: 165,  critLow: 70,   critHigh: 200 },
+          FMetHb: { min: 0.0,  max: 1.5,  critLow: -1,   critHigh: 10.0 },
+          cLac:   { min: 0.5,  max: 2.0,  critLow: -1,   critHigh: 4.0 },
+          cGlu:   { min: 3.9,  max: 6.1,  critLow: 2.8,  critHigh: 15.0 },
+          ctBil:  { min: 0,    max: 21,   critLow: -1,   critHigh: 100 }
+        },
+        venous: {
+          pH:     { min: 7.31, max: 7.41, critLow: 7.10, critHigh: 7.56 },
+          pCO2:   { min: 41.0, max: 51.0, critLow: 22.0, critHigh: 70.0 },
+          pO2:    { min: 35.0, max: 45.0, critLow: 25.0, critHigh: 85.0 },
+          cHCO3:  { min: 23.0, max: 27.0, critLow: 12.0, critHigh: 38.0 },
+          cBase:  { min: -2.0, max: 2.0,  critLow: -10.0, critHigh: 10.0 },
+          mOsm:   { min: 275,  max: 295,  critLow: 260,  critHigh: 320 },
+          cK:     { min: 3.5,  max: 5.1,  critLow: 2.8,  critHigh: 6.5 },
+          cNa:    { min: 135,  max: 145,  critLow: 122,  critHigh: 160 },
+          cCa:    { min: 1.12, max: 1.32, critLow: 0.90, critHigh: 1.55 },
+          cCl:    { min: 98,   max: 107,  critLow: 85,   critHigh: 118 },
+          sO2:    { min: 70.0, max: 75.0, critLow: 55.0, critHigh: 92.0 },
+          ctHb:   { min: 120,  max: 165,  critLow: 70,   critHigh: 200 },
+          FMetHb: { min: 0.0,  max: 1.5,  critLow: -1,   critHigh: 10.0 },
+          cLac:   { min: 0.5,  max: 2.0,  critLow: -1,   critHigh: 4.0 },
+          cGlu:   { min: 3.9,  max: 6.1,  critLow: 2.8,  critHigh: 15.0 },
+          ctBil:  { min: 0,    max: 21,   critLow: -1,   critHigh: 100 }
+        }
+      };
+
+      const PARAM_GROUPS = [
+        {
+          title: 'Газы крови и pH',
+          dot: 'dot-cyan',
+          twoCol: false,
+          items: [
+            { key: 'pH',   label: 'pH',   unit: '',     min: 6.60, max: 7.80, step: 0.01, decimals: 2 },
+            { key: 'pCO2', label: 'pCO₂', unit: 'mmHg', min: 10,   max: 120,  step: 0.1,  decimals: 1 },
+            { key: 'pO2',  label: 'pO₂',  unit: 'mmHg', min: 10,   max: 500,  step: 0.5,  decimals: 1 }
+          ]
+        },
+        {
+          title: 'Кислотно-щелочной статус',
+          dot: 'dot-violet',
+          twoCol: false,
+          items: [
+            { key: 'cHCO3', label: 'cHCO₃⁻',     unit: 'mmol/L',  min: 2,   max: 55,  step: 0.1, decimals: 1 },
+            { key: 'cBase', label: 'cBase (BE)',  unit: 'mmol/L',  min: -30, max: 30,  step: 0.1, decimals: 1 },
+            { key: 'mOsm',  label: 'mOsm,c',      unit: 'mmol/kg', min: 230, max: 360, step: 0.1, decimals: 1 }
+          ]
+        },
+        {
+          title: 'Электролиты (включая влияние Cl⁻ и Na⁺ на SID)',
+          dot: 'dot-amber',
+          twoCol: true,
+          items: [
+            { key: 'cK',  label: 'cK⁺',   unit: 'mmol/L', min: 1.5,  max: 10.0, step: 0.1,  decimals: 1 },
+            { key: 'cNa', label: 'cNa⁺',  unit: 'mmol/L', min: 105,  max: 175,  step: 1,    decimals: 0 },
+            { key: 'cCa', label: 'cCa²⁺', unit: 'mmol/L', min: 0.50, max: 2.00, step: 0.01, decimals: 2 },
+            { key: 'cCl', label: 'cCl⁻',  unit: 'mmol/L', min: 70,   max: 135,  step: 1,    decimals: 0 }
+          ]
+        },
+        {
+          title: 'Оксиметрия и Метаболиты',
+          dot: 'dot-emerald',
+          twoCol: true,
+          items: [
+            { key: 'sO2',    label: 'sO₂',    unit: '%',        min: 20,  max: 100,  step: 0.1, decimals: 1 },
+            { key: 'ctHb',   label: 'ctHb',   unit: 'g/L',      min: 30,  max: 220,  step: 1,   decimals: 0 },
+            { key: 'FMetHb', label: 'FMetHb', unit: '%',        min: 0,   max: 30,   step: 0.1, decimals: 1 },
+            { key: 'cLac',   label: 'cLac',   unit: 'mmol/L',   min: 0.2, max: 20.0, step: 0.1, decimals: 1 },
+            { key: 'cGlu',   label: 'cGlu',   unit: 'mmol/L',   min: 1.0, max: 40.0, step: 0.1, decimals: 1 },
+            { key: 'ctBil',  label: 'ctBil',  unit: 'мкмоль/л', min: 0,   max: 300,  step: 1,   decimals: 0 }
+          ]
+        }
+      ];
+
+      const PRESETS = {
+        normal: {
+          bloodType: 'arterial', temp: 37.0, fio2: 21, weight: 70,
+          pH: 7.40, pCO2: 40.0, pO2: 95.0, cHCO3: 24.0, cBase: 0.0, mOsm: 290.2,
+          cK: 4.2, cNa: 140, cCa: 1.20, cCl: 102,
+          sO2: 97.5, ctHb: 140, FMetHb: 0.5, cLac: 1.0, cGlu: 5.2, ctBil: 10,
+          chain: 'Загружена физиологическая норма (АБГ). Попробуйте изменить pCO₂ или Cl⁻!'
+        },
+        analyzer_case: {
+          bloodType: 'venous', temp: 37.0, fio2: 21, weight: 70,
+          pH: 6.77, pCO2: 57.2, pO2: 28.6, cHCO3: 5.5, cBase: -23.8, mOsm: 282.6,
+          cK: 8.9, cNa: 134, cCa: 0.96, cCl: 95,
+          sO2: 74.2, ctHb: 79, FMetHb: 1.4, cLac: 1.2, cGlu: 9.8, ctBil: 4,
+          chain: 'Загружен точный кейс с вашего анализатора: тяжелый декомпенсированный смешанный ацидоз + критическая гиперкалиемия.'
+        },
+        hyperchloremic: {
+          bloodType: 'arterial', temp: 37.0, fio2: 21, weight: 70,
+          pH: 7.22, pCO2: 37.0, pO2: 92.0, cHCO3: 15.0, cBase: -11.0, mOsm: 294.5,
+          cK: 4.8, cNa: 142, cCa: 1.24, cCl: 118,
+          sO2: 95.8, ctHb: 125, FMetHb: 0.5, cLac: 1.1, cGlu: 5.5, ctBil: 10,
+          chain: '↑ Cl⁻ (118, инфузия 0.9% NaCl) → ↓ SID (28.8) → ↓ HCO₃⁻ (15) → ↓ pH (7.22) • гиперхлоремический ацидоз (NAGMA).'
+        },
+        copd: {
+          bloodType: 'arterial', temp: 37.2, fio2: 28, weight: 75,
+          pH: 7.21, pCO2: 68.0, pO2: 58.0, cHCO3: 26.0, cBase: -1.5, mOsm: 287.4,
+          cK: 5.1, cNa: 138, cCa: 1.22, cCl: 99,
+          sO2: 86.0, ctHb: 158, FMetHb: 0.8, cLac: 1.4, cGlu: 6.4, ctBil: 12,
+          chain: '↑ pCO₂ (68 mmHg, гиповентиляция) → ↑ H₂CO₃ → ↓ pH (7.21) • острый респираторный ацидоз + гипоксемия.'
+        },
+        lactate_shock: {
+          bloodType: 'arterial', temp: 38.5, fio2: 60, weight: 70,
+          pH: 7.24, pCO2: 33.0, pO2: 62.0, cHCO3: 14.0, cBase: -12.5, mOsm: 289.2,
+          cK: 5.4, cNa: 136, cCa: 1.08, cCl: 101,
+          sO2: 88.5, ctHb: 104, FMetHb: 0.9, cLac: 7.5, cGlu: 12.2, ctBil: 26,
+          chain: '↑ Лактат (7.5) → расход HCO₃⁻ (14) → ↓ pH (7.24) + высокий AG (21) • септический лактатацидоз.'
+        },
+        alkalosis: {
+          bloodType: 'arterial', temp: 36.8, fio2: 21, weight: 68,
+          pH: 7.54, pCO2: 41.0, pO2: 90.0, cHCO3: 34.0, cBase: 11.2, mOsm: 292.6,
+          cK: 2.9, cNa: 141, cCa: 1.02, cCl: 88,
+          sO2: 97.8, ctHb: 134, FMetHb: 0.5, cLac: 1.1, cGlu: 5.6, ctBil: 9,
+          chain: '↓ Cl⁻ (88) → ↑ SID (55.9) → ↑ HCO₃⁻ (34) → ↑ pH (7.54) → ↓ K⁺ (2.9), ↓ Ca²⁺ (1.02) • гипохлоремический метаболический алкалоз.'
+        }
+      };
+
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+      /* =========================================================================
+         3. УМНАЯ СИСТЕМА ТУЛТИПОВ ДЛЯ ВСЕХ КНОПОК "!" (HOVER + TAP)
+         ========================================================================= */
+      const tooltipEl = document.getElementById('globalTooltip');
+      const ttTitle = document.getElementById('ttTitle');
+      const ttNorm = document.getElementById('ttNorm');
+      const ttBody = document.getElementById('ttBody');
+      let activeTooltipBtn = null;
+      let hoverHideTimer = null;
+
+      function showTooltip(btn) {
+        const key = btn.dataset.info;
+        const data = INFO_DB[key];
+        if (!data) return;
+
+        clearTimeout(hoverHideTimer);
+        if (activeTooltipBtn && activeTooltipBtn !== btn) {
+          activeTooltipBtn.classList.remove('active');
+        }
+        activeTooltipBtn = btn;
+        btn.classList.add('active');
+
+        ttTitle.textContent = data.title;
+        ttNorm.textContent = data.norm;
+        ttNorm.style.display = data.norm ? 'inline-block' : 'none';
+        ttBody.innerHTML =
+          `<p><span class="tt-label">Суть:</span> ${data.phys}</p>` +
+          `<p><span class="tt-label">Клиника:</span> ${data.clin}</p>`;
+
+        tooltipEl.classList.add('visible');
+        tooltipEl.setAttribute('aria-hidden', 'false');
+
+        // Умное позиционирование внутри окна без обрезания по краям
+        const rect = btn.getBoundingClientRect();
+        const ttRect = tooltipEl.getBoundingClientRect();
+        const margin = 12;
+
+        let left = rect.left + rect.width / 2 - ttRect.width / 2;
+        if (left < margin) left = margin;
+        if (left + ttRect.width > window.innerWidth - margin) {
+          left = window.innerWidth - ttRect.width - margin;
+        }
+
+        let top = rect.bottom + 8;
+        if (top + ttRect.height > window.innerHeight - margin) {
+          top = rect.top - ttRect.height - 8;
+        }
+        if (top < margin) top = margin;
+
+        tooltipEl.style.left = `${Math.round(left)}px`;
+        tooltipEl.style.top = `${Math.round(top)}px`;
+      }
+
+      function hideTooltip() {
+        if (activeTooltipBtn) {
+          activeTooltipBtn.classList.remove('active');
+          activeTooltipBtn = null;
+        }
+        tooltipEl.classList.remove('visible');
+        tooltipEl.setAttribute('aria-hidden', 'true');
+      }
+
+      function initTooltips() {
+        // Делегирование событий — работает и для статичных, и для динамически созданных кнопок "!"
+        document.addEventListener('mouseover', (e) => {
+          const btn = e.target.closest('.info-btn');
+          if (btn && window.matchMedia('(hover: hover)').matches) {
+            showTooltip(btn);
+          }
+        });
+
+        document.addEventListener('mouseout', (e) => {
+          const btn = e.target.closest('.info-btn');
+          if (btn && window.matchMedia('(hover: hover)').matches) {
+            hoverHideTimer = setTimeout(() => {
+              if (!tooltipEl.matches(':hover')) hideTooltip();
+            }, 160);
+          }
+        });
+
+        tooltipEl.addEventListener('mouseenter', () => clearTimeout(hoverHideTimer));
+        tooltipEl.addEventListener('mouseleave', () => {
+          if (window.matchMedia('(hover: hover)').matches) {
+            hoverHideTimer = setTimeout(hideTooltip, 140);
+          }
+        });
+
+        document.addEventListener('click', (e) => {
+          const btn = e.target.closest('.info-btn');
+          if (btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeTooltipBtn === btn && tooltipEl.classList.contains('visible')) {
+              hideTooltip();
+            } else {
+              showTooltip(btn);
+            }
+            return;
+          }
+          if (!tooltipEl.contains(e.target)) {
+            hideTooltip();
+          }
+        });
+
+        document.getElementById('ttCloseBtn').addEventListener('click', hideTooltip);
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') hideTooltip();
+        });
+        window.addEventListener('scroll', hideTooltip, { passive: true });
+      }
+
+      /* =========================================================================
+         4. ДВИЖОК ФИЗИОЛОГИЧЕСКОЙ СВЯЗИ (ГЕНДЕРСОН–ХАССЕЛЬБАЛЬХ + СТЮАРТ SID)
+         ========================================================================= */
+      function calcP50(ph, temp, be) {
+        const exp = -0.48 * (ph - 7.40) + 0.024 * (temp - 37.0) + 0.0013 * be;
+        return clamp(26.8 * Math.pow(10, exp), 10, 68);
+      }
+
+      function calcHillSO2(po2, p50) {
+        if (po2 <= 0) return 20;
+        const n = 2.7;
+        const a = Math.pow(po2, n);
+        const b = Math.pow(p50, n);
+        return clamp((100 * a) / (a + b), 20, 100);
+      }
+
+      function calcBE(hco3, ph) {
+        return clamp(0.9287 * (hco3 - 24.4 + 14.83 * (ph - 7.40)), -30, 30);
+      }
+
+      function calcPH(hco3, pco2) {
+        return clamp(6.1 + Math.log10(Math.max(1.5, hco3) / (0.0301 * Math.max(8, pco2))), 6.60, 7.80);
+      }
+
+      function calcOsm(na, glu) {
+        return clamp(2 * na + glu + 5.0, 230, 360);
+      }
+
+      // Применяем pH-зависимые сдвиги электролитов (K+, Ca2+) и сатурации (sO2)
+      function applyPhSecondaryShifts(oldPh, newPh, affected) {
+        const dPh = newPh - oldPh;
+        if (Math.abs(dPh) > 0.004) {
+          // -0.1 pH => +0.5 mmol/L K+ и +0.04 mmol/L Ca2+
+          state.cK = Number(clamp(state.cK - 5.0 * dPh, 1.5, 10.0).toFixed(1));
+          state.cCa = Number(clamp(state.cCa - 0.40 * dPh, 0.50, 2.00).toFixed(2));
+          affected.push('cK', 'cCa');
+        }
+        const newP50 = calcP50(state.pH, state.temp, state.cBase);
+        const newSO2 = Number(calcHillSO2(state.pO2, newP50).toFixed(1));
+        if (Math.abs(newSO2 - state.sO2) >= 0.2) {
+          state.sO2 = newSO2;
+          affected.push('sO2');
+        }
+      }
+
+      function flashUpdatedCards(keys) {
+        const unique = [...new Set(keys)];
+        unique.forEach(k => {
+          const row = document.getElementById(`row_${k}`);
+          if (!row) return;
+          row.classList.remove('auto-updated');
+          void row.offsetWidth; // перезапуск CSS-анимации
+          row.classList.add('auto-updated', 'show-auto-badge');
+          clearTimeout(row._autoTimer);
+          row._autoTimer = setTimeout(() => {
+            row.classList.remove('show-auto-badge');
+          }, 2600);
+        });
+      }
+
+      function setCausalChain(text) {
+        document.getElementById('causalChainText').textContent = text;
+      }
+
+      function handleCoupledChange(changedKey, oldVal, newVal) {
+        if (!state.coupling) {
+          setCausalChain(`Ручной режим бланка: изменен только параметр ${changedKey} (без автопересчета).`);
+          return;
+        }
+
+        const delta = newVal - oldVal;
+        if (Math.abs(delta) < 1e-6) return;
+
+        const affected = [];
+        const oldPh = state.pH;
+
+        if (changedKey === 'pCO2') {
+          // Острая небикарбонатная буферизация (~0.1 ммоль/л HCO3 на +1 mmHg pCO2)
+          state.cHCO3 = Number(clamp(state.cHCO3 + 0.08 * delta, 2, 55).toFixed(1));
+          state.pH = Number(calcPH(state.cHCO3, state.pCO2).toFixed(2));
+          state.cBase = Number(calcBE(state.cHCO3, state.pH).toFixed(1));
+          affected.push('pH', 'cHCO3', 'cBase');
+          applyPhSecondaryShifts(oldPh, state.pH, affected);
+
+          const dir = delta > 0 ? '↑ pCO₂ → ↑ H₂CO₃ → ↓ pH (респираторный ацидоз) → ↑ K⁺, сдвиг HbO₂ вправо'
+                                : '↓ pCO₂ → ↓ H₂CO₃ → ↑ pH (респираторный алкалоз) → ↓ K⁺, ↓ Ca²⁺, сдвиг HbO₂ влево';
+          setCausalChain(dir);
+        } else if (changedKey === 'cHCO3') {
+          state.pH = Number(calcPH(state.cHCO3, state.pCO2).toFixed(2));
+          state.cBase = Number(calcBE(state.cHCO3, state.pH).toFixed(1));
+          affected.push('pH', 'cBase');
+          applyPhSecondaryShifts(oldPh, state.pH, affected);
+
+          setCausalChain(delta < 0
+            ? '↓ HCO₃⁻ → ↓ BE → ↓ pH (метаболический ацидоз) → ↑ K⁺, ↑ Ca²⁺'
+            : '↑ HCO₃⁻ → ↑ BE → ↑ pH (метаболический алкалоз) → ↓ K⁺, ↓ Ca²⁺');
+        } else if (changedKey === 'cBase') {
+          // 4 итерации точного согласования HCO3- и pH с новым BE
+          let phEst = state.pH;
+          let hco3Est = state.cHCO3;
+          for (let i = 0; i < 4; i++) {
+            hco3Est = clamp(24.4 + state.cBase / 0.9287 - 14.83 * (phEst - 7.40), 2, 55);
+            phEst = calcPH(hco3Est, state.pCO2);
+          }
+          state.cHCO3 = Number(hco3Est.toFixed(1));
+          state.pH = Number(phEst.toFixed(2));
+          affected.push('cHCO3', 'pH');
+          applyPhSecondaryShifts(oldPh, state.pH, affected);
+
+          setCausalChain(delta < 0
+            ? '↓ BE → ↓ HCO₃⁻ → ↓ pH (дефицит оснований / метаболический ацидоз) → ↑ K⁺'
+            : '↑ BE → ↑ HCO₃⁻ → ↑ pH (избыток оснований / метаболический алкалоз) → ↓ K⁺, ↓ Ca²⁺');
+        } else if (changedKey === 'pH') {
+          state.cHCO3 = Number(clamp(0.0301 * state.pCO2 * Math.pow(10, state.pH - 6.1), 2, 55).toFixed(1));
+          state.cBase = Number(calcBE(state.cHCO3, state.pH).toFixed(1));
+          affected.push('cHCO3', 'cBase');
+          applyPhSecondaryShifts(oldPh, state.pH, affected);
+
+          setCausalChain(delta < 0
+            ? '↓ pH → ↓ HCO₃⁻, ↓ BE → выход K⁺ из клеток (↑ K⁺), диссоциация Ca²⁺ (↑ Ca²⁺), сдвиг P₅₀ вправо'
+            : '↑ pH → ↑ HCO₃⁻, ↑ BE → вход K⁺ в клетки (↓ K⁺), связывание Ca²⁺ (↓ Ca²⁺), сдвиг P₅₀ влево');
+        } else if (changedKey === 'cCl') {
+          // Модель Стюарта: рост Cl- снижает SID -> снижает HCO3- (~0.85:1) -> снижает BE и pH
+          const dHco3 = -0.85 * delta;
+          state.cHCO3 = Number(clamp(state.cHCO3 + dHco3, 2, 55).toFixed(1));
+          state.pH = Number(calcPH(state.cHCO3, state.pCO2).toFixed(2));
+          state.cBase = Number(calcBE(state.cHCO3, state.pH).toFixed(1));
+          affected.push('cHCO3', 'cBase', 'pH');
+          applyPhSecondaryShifts(oldPh, state.pH, affected);
+
+          setCausalChain(delta > 0
+            ? '↑ Cl⁻ → ↓ SID (Стюарт) → ↓ HCO₃⁻, ↓ BE → ↓ pH (гиперхлоремический метаболический ацидоз)'
+            : '↓ Cl⁻ → ↑ SID (Стюарт) → ↑ HCO₃⁻, ↑ BE → ↑ pH (гипохлоремический метаболический алкалоз)');
+        } else if (changedKey === 'cNa') {
+          // Na+ повышает SID и осмолярность
+          const dHco3 = 0.55 * delta;
+          state.cHCO3 = Number(clamp(state.cHCO3 + dHco3, 2, 55).toFixed(1));
+          state.pH = Number(calcPH(state.cHCO3, state.pCO2).toFixed(2));
+          state.cBase = Number(calcBE(state.cHCO3, state.pH).toFixed(1));
+          state.mOsm = Number(calcOsm(state.cNa, state.cGlu).toFixed(1));
+          affected.push('mOsm', 'cHCO3', 'cBase', 'pH');
+          applyPhSecondaryShifts(oldPh, state.pH, affected);
+
+          setCausalChain(delta > 0
+            ? '↑ Na⁺ → ↑ mOsm и ↑ SID → умеренный ↑ HCO₃⁻ / ↑ pH'
+            : '↓ Na⁺ → ↓ mOsm и ↓ SID → умеренный ↓ HCO₃⁻ / ↓ pH (ацидоз разведения)');
+        } else if (changedKey === 'cLac') {
+          // Лактат расходует бикарбонат почти 1:1
+          state.cHCO3 = Number(clamp(state.cHCO3 - 0.9 * delta, 2, 55).toFixed(1));
+          state.pH = Number(calcPH(state.cHCO3, state.pCO2).toFixed(2));
+          state.cBase = Number(calcBE(state.cHCO3, state.pH).toFixed(1));
+          affected.push('cHCO3', 'cBase', 'pH');
+          applyPhSecondaryShifts(oldPh, state.pH, affected);
+
+          setCausalChain(delta > 0
+            ? '↑ Лактат → расход HCO₃⁻ (1:1) → ↓ BE → ↓ pH + рост AG (лактатацидоз)'
+            : '↓ Лактат (клиренс) → восстановление HCO₃⁻ и BE → ↑ pH');
+        } else if (changedKey === 'cGlu') {
+          state.mOsm = Number(calcOsm(state.cNa, state.cGlu).toFixed(1));
+          affected.push('mOsm');
+          setCausalChain(delta > 0
+            ? '↑ Глюкоза → ↑ расчетной осмолярности (mOsm,c) и псевдогипонатриемия (см. скорр. Na⁺)'
+            : '↓ Глюкоза → ↓ расчетной осмолярности (mOsm,c)');
+        } else if (changedKey === 'pO2' || changedKey === 'temp') {
+          const p50 = calcP50(state.pH, state.temp, state.cBase);
+          state.sO2 = Number(calcHillSO2(state.pO2, p50).toFixed(1));
+          affected.push('sO2');
+          setCausalChain(changedKey === 'temp'
+            ? (delta > 0 ? '↑ Температура → ↑ P₅₀ (сдвиг кривой HbO₂ вправо) → ↓ sO₂ при том же pO₂, но легче отдача O₂'
+                         : '↓ Температура → ↓ P₅₀ (сдвиг влево) → ↑ сродство Hb к O₂, хуже отдача тканям')
+            : 'Изменение pO₂ → пересчет насыщения гемоглобина sO₂ по кривой Хилла (с учетом текущего P₅₀)');
+        } else {
+          setCausalChain(`Параметр ${changedKey} обновлен — пересчитаны клеточная анимация, индексы и рекомендации.`);
+        }
+
+        if (affected.length > 0) {
+          flashUpdatedCards(affected);
+        }
+      }
+
+      /* =========================================================================
+         5. ГЕНЕРАЦИЯ UI ПАРАМЕТРОВ (КЛАВИАТУРА + РУЛЕТКА + КНОПКА "!")
+         ========================================================================= */
+      function buildParameterUI() {
+        const container = document.getElementById('parametersContainer');
+        container.innerHTML = '';
+
+        PARAM_GROUPS.forEach(group => {
+          const card = document.createElement('div');
+          card.className = 'card';
+
+          const header = document.createElement('div');
+          header.className = 'card-header';
+          header.innerHTML = `<div class="section-title"><span class="dot ${group.dot}"></span>${group.title}</div>`;
+          card.appendChild(header);
+
+          const grid = document.createElement('div');
+          grid.className = `param-group-grid${group.twoCol ? ' two-col' : ''}`;
+
+          group.items.forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'param-row';
+            row.id = `row_${item.key}`;
+
+            row.innerHTML = `
+              <div class="param-top">
+                <div class="param-name-wrap">
+                  <label for="num_${item.key}" class="param-label">${item.label}</label>
+                  <button class="info-btn" type="button" data-info="${item.key}" aria-label="Справка по ${item.label}">!</button>
+                  <span id="ref_${item.key}" class="param-ref"></span>
+                  <span class="auto-pill">авто</span>
+                </div>
+                <div class="param-right">
+                  <span id="badge_${item.key}" class="status-badge sb-ok">Норма</span>
+                  <div class="num-input-wrap">
+                    <input
+                      id="num_${item.key}"
+                      class="num-box"
+                      type="number"
+                      min="${item.min}"
+                      max="${item.max}"
+                      step="${item.step}"
+                      value="${state[item.key]}"
+                    />
+                    <span class="unit-lbl">${item.unit}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="ruler-wrap">
+                <input
+                  id="rng_${item.key}"
+                  class="ruler-slider"
+                  type="range"
+                  min="${item.min}"
+                  max="${item.max}"
+                  step="${item.step}"
+                  value="${state[item.key]}"
+                />
+                <div class="ruler-ticks"></div>
+              </div>
+            `;
+            grid.appendChild(row);
+          });
+
+          card.appendChild(grid);
+          container.appendChild(card);
+        });
+
+        // Привязка обработчиков ввода
+        PARAM_GROUPS.forEach(group => {
+          group.items.forEach(item => {
+            const numEl = document.getElementById(`num_${item.key}`);
+            const rngEl = document.getElementById(`rng_${item.key}`);
+
+            const onUserChange = (raw) => {
+              let v = parseFloat(raw);
+              if (isNaN(v)) return;
+              v = clamp(v, item.min, item.max);
+              const oldVal = state[item.key];
+              state[item.key] = v;
+
+              handleCoupledChange(item.key, oldVal, v);
+              syncInputsFromState();
+              updateAllDerived();
+            };
+
+            numEl.addEventListener('input', (e) => onUserChange(e.target.value));
+            rngEl.addEventListener('input', (e) => onUserChange(e.target.value));
+          });
+        });
+      }
+
+      function updateTrackGradient(el, min, max, nMin, nMax, color) {
+        const p1 = clamp(((nMin - min) / (max - min)) * 100, 0, 100);
+        const p2 = clamp(((nMax - min) / (max - min)) * 100, 0, 100);
+        el.style.background = `linear-gradient(to right, #1e293b 0%, #1e293b ${p1}%, ${color} ${p1}%, ${color} ${p2}%, #1e293b ${p2}%, #1e293b 100%)`;
+      }
+
+      function syncInputsFromState() {
+        const refSet = RANGES[state.bloodType];
+
+        // Преаналитика
+        const numTemp = document.getElementById('num_temp');
+        if (document.activeElement !== numTemp) numTemp.value = state.temp.toFixed(1);
+        document.getElementById('rng_temp').value = state.temp;
+        updateTrackGradient(document.getElementById('rng_temp'), 32, 42, 36.2, 37.2, 'rgba(16, 185, 129, 0.45)');
+
+        const numFio2 = document.getElementById('num_fio2');
+        if (document.activeElement !== numFio2) numFio2.value = Math.round(state.fio2);
+        document.getElementById('rng_fio2').value = state.fio2;
+        updateTrackGradient(document.getElementById('rng_fio2'), 21, 100, 21, 25, 'rgba(6, 182, 212, 0.45)');
+
+        const numW = document.getElementById('num_weight');
+        if (document.activeElement !== numW) numW.value = Math.round(state.weight);
+        document.getElementById('rng_weight').value = state.weight;
+        updateTrackGradient(document.getElementById('rng_weight'), 30, 150, 55, 90, 'rgba(6, 182, 212, 0.4)');
+
+        document.getElementById('recWeightTag').textContent = `Расчет на ${Math.round(state.weight)} кг`;
+
+        PARAM_GROUPS.forEach(group => {
+          group.items.forEach(item => {
+            const val = state[item.key];
+            const ref = refSet[item.key];
+            const numEl = document.getElementById(`num_${item.key}`);
+            const rngEl = document.getElementById(`rng_${item.key}`);
+            const refEl = document.getElementById(`ref_${item.key}`);
+            const badgeEl = document.getElementById(`badge_${item.key}`);
+            const rowEl = document.getElementById(`row_${item.key}`);
+
+            if (document.activeElement !== numEl) {
+              numEl.value = val.toFixed(item.decimals);
+            }
+            rngEl.value = val;
+            refEl.textContent = `(${ref.min}–${ref.max})`;
+
+            updateTrackGradient(rngEl, item.min, item.max, ref.min, ref.max, 'rgba(16, 185, 129, 0.48)');
+
+            rowEl.classList.remove('st-warn', 'st-crit');
+            if (val <= ref.critLow || val >= ref.critHigh) {
+              badgeEl.textContent = val <= ref.critLow ? 'КРИТИЧНО ↓' : 'КРИТИЧНО ↑';
+              badgeEl.className = 'status-badge sb-crit';
+              rowEl.classList.add('st-crit');
+            } else if (val < ref.min) {
+              badgeEl.textContent = 'Ниже ↓';
+              badgeEl.className = 'status-badge sb-warn';
+              rowEl.classList.add('st-warn');
+            } else if (val > ref.max) {
+              badgeEl.textContent = 'Выше ↑';
+              badgeEl.className = 'status-badge sb-warn';
+              rowEl.classList.add('st-warn');
+            } else {
+              badgeEl.textContent = 'Норма';
+              badgeEl.className = 'status-badge sb-ok';
+            }
+          });
+        });
+      }
+
+      /* =========================================================================
+         6. ФИЗИОЛОГИЧЕСКИЕ ИНДЕКСЫ, ИНТЕРПРЕТАЦИЯ И РЕКОМЕНДАЦИИ
+         ========================================================================= */
+      function computePhysiology() {
+        const ref = RANGES[state.bloodType];
+        const p50 = calcP50(state.pH, state.temp, state.cBase);
+        const ag = state.cNa - (state.cCl + state.cHCO3);
+        const sid = state.cNa + state.cK - state.cCl;
+        const pfRatio = state.pO2 / (state.fio2 / 100);
+        const winterCenter = 1.5 * state.cHCO3 + 8.0;
+        const winterLow = winterCenter - 2.0;
+        const winterHigh = winterCenter + 2.0;
+        const corrNa = state.cGlu > 5.6 ? state.cNa + 0.288 * (state.cGlu - 5.55) : state.cNa;
+        const hco3Deficit = state.cBase < -2 ? Math.round(0.3 * state.weight * Math.abs(state.cBase)) : 0;
+
+        // Активность ферментов (пик 100% при pH 7.35–7.45)
+        let enzymeActivity = 100;
+        if (state.pH < 7.35) {
+          enzymeActivity = Math.max(8, Math.round(100 * Math.exp(-3.4 * (7.35 - state.pH))));
+        } else if (state.pH > 7.45) {
+          enzymeActivity = Math.max(25, Math.round(100 * Math.exp(-2.4 * (state.pH - 7.45))));
+        }
+
+        const o2NormFactor = state.bloodType === 'arterial'
+          ? clamp((state.sO2 / 96) * (state.ctHb / 130), 0.15, 1.0)
+          : clamp((state.sO2 / 72) * (state.ctHb / 130), 0.15, 1.0);
+        const atpScore = Math.max(6, Math.round(enzymeActivity * Math.max(0.25, o2NormFactor)));
+
+        return {
+          ref, p50, ag, sid, pfRatio, winterCenter, winterLow, winterHigh,
+          corrNa, hco3Deficit, enzymeActivity, o2NormFactor, atpScore
+        };
+      }
+
+      function updateCalculatorsAndInterpretation(phys) {
+        const { ref, p50, ag, sid, pfRatio, winterCenter, winterLow, winterHigh, corrNa, hco3Deficit, enzymeActivity, atpScore } = phys;
+
+        // --- HUD на клеточном холсте ---
+        const hudEnz = document.getElementById('hudEnzyme');
+        hudEnz.textContent = `${enzymeActivity}%`;
+        hudEnz.style.color = enzymeActivity >= 80 ? '#34d399' : enzymeActivity >= 45 ? '#fbbf24' : '#f87171';
+
+        const hudAtp = document.getElementById('hudAtp');
+        hudAtp.textContent = `${atpScore}%`;
+        hudAtp.style.color = atpScore >= 80 ? '#22d3ee' : atpScore >= 45 ? '#fbbf24' : '#f87171';
+
+        const hudShift = document.getElementById('hudShift');
+        if (state.pH < ref.pH.min || state.cK >= 5.5) {
+          hudShift.textContent = 'H⁺ внутрь → K⁺ наружу';
+          hudShift.style.color = '#f87171';
+        } else if (state.pH > ref.pH.max || state.cCa < 1.08) {
+          hudShift.textContent = 'Спазм / ↓Ca²⁺ / K⁺ внутрь';
+          hudShift.style.color = '#c4b5fd';
+        } else {
+          hudShift.textContent = 'Баланс';
+          hudShift.style.color = '#34d399';
+        }
+
+        const anaerobicAlert = document.getElementById('canvasAnaerobicAlert');
+        const showAnaerobic = (state.bloodType === 'arterial' && (state.pO2 < 65 || state.sO2 < 90)) || state.cLac >= 2.5;
+        anaerobicAlert.style.display = showAnaerobic ? 'block' : 'none';
+
+        const phBadge = document.getElementById('hudPhBadge');
+        if (state.pH <= ref.pH.critLow) {
+          phBadge.textContent = `pH ${state.pH.toFixed(2)} • ТЯЖЕЛЫЙ АЦИДОЗ`;
+          phBadge.style.borderColor = 'rgba(239,68,68,0.8)';
+          phBadge.style.color = '#fca5a5';
+        } else if (state.pH < ref.pH.min) {
+          phBadge.textContent = `pH ${state.pH.toFixed(2)} • АЦИДЕМИЯ`;
+          phBadge.style.borderColor = 'rgba(245,158,11,0.7)';
+          phBadge.style.color = '#fde68a';
+        } else if (state.pH > ref.pH.max) {
+          phBadge.textContent = `pH ${state.pH.toFixed(2)} • АЛКАЛЕМИЯ`;
+          phBadge.style.borderColor = 'rgba(139,92,246,0.75)';
+          phBadge.style.color = '#ddd6fe';
+        } else {
+          phBadge.textContent = `pH ${state.pH.toFixed(2)} • НОРМА`;
+          phBadge.style.borderColor = 'rgba(6,182,212,0.55)';
+          phBadge.style.color = '#67e8f9';
+        }
+
+        document.getElementById('hudCapLabel').textContent =
+          `Капилляр: Hb ${Math.round(state.ctHb)} г/л • sO₂ ${state.sO2.toFixed(1)}% • T ${state.temp.toFixed(1)}°C`;
+
+        // --- P50 бейдж и подпись ---
+        const p50Badge = document.getElementById('p50Badge');
+        p50Badge.textContent = `P₅₀ = ${p50.toFixed(1)} mmHg`;
+        const p50Exp = document.getElementById('p50Explanation');
+        const cP50St = document.getElementById('calcP50Status');
+        document.getElementById('calcP50Val').innerHTML = `${p50.toFixed(1)} <small>mmHg</small>`;
+
+        if (p50 > 28.5) {
+          p50Badge.className = 'status-badge sb-warn';
+          cP50St.textContent = 'Сдвиг вправо';
+          cP50St.className = 'status-badge sb-warn';
+          p50Exp.innerHTML = `<strong style="color:#fbbf24;">Сдвиг ВПРАВО (P₅₀ = ${p50.toFixed(1)} mmHg):</strong> сродство Hb к O₂ снижено (эффект Бора при ацидозе / лихорадке). Отдача O₂ тканям облегчена, но захват в легких при низком pO₂ ухудшается.`;
+        } else if (p50 < 25.0) {
+          p50Badge.className = 'status-badge sb-warn';
+          cP50St.textContent = 'Сдвиг влево';
+          cP50St.className = 'status-badge sb-warn';
+          p50Exp.innerHTML = `<strong style="color:#c4b5fd;">Сдвиг ВЛЕВО (P₅₀ = ${p50.toFixed(1)} mmHg):</strong> сродство Hb к O₂ повышено (алкалоз / гипотермия). Гемоглобин удерживает O₂ — затруднена отдача кислорода тканям.`;
+        } else {
+          p50Badge.className = 'status-badge sb-ok';
+          cP50St.textContent = 'Норма';
+          cP50St.className = 'status-badge sb-ok';
+          p50Exp.innerHTML = `<strong style="color:#34d399;">Физиологическая норма (P₅₀ = ${p50.toFixed(1)} mmHg):</strong> оптимальный баланс связывания O₂ в легких и отдачи тканям (эталон 26.8 mmHg).`;
+        }
+
+        // --- AG ---
+        document.getElementById('calcAgVal').innerHTML = `${ag.toFixed(1)} <small>ммоль/л</small>`;
+        const agSt = document.getElementById('calcAgStatus');
+        const agNote = document.getElementById('calcAgNote');
+        if (ag > 14) {
+          agSt.textContent = 'Высокий (HAGMA)';
+          agSt.className = 'status-badge sb-crit';
+          agNote.textContent = 'Накопление кислот (лактат, кетоны, уремия)';
+        } else if (ag < 6) {
+          agSt.textContent = 'Снижен';
+          agSt.className = 'status-badge sb-warn';
+          agNote.textContent = 'Возможна гипоальбуминемия / избыток катионов';
+        } else {
+          agSt.textContent = state.cHCO3 < ref.cHCO3.min ? 'Норма (NAGMA)' : 'Норма';
+          agSt.className = state.cHCO3 < ref.cHCO3.min ? 'status-badge sb-warn' : 'status-badge sb-ok';
+          agNote.textContent = state.cHCO3 < ref.cHCO3.min ? 'Гиперхлоремический ацидоз / потеря HCO₃⁻' : 'Na − (Cl + HCO₃⁻) • норма 8–12';
+        }
+
+        // --- Stewart SID ---
+        document.getElementById('calcSidVal').innerHTML = `${sid.toFixed(1)} <small>ммоль/л</small>`;
+        const sidSt = document.getElementById('calcSidStatus');
+        const sidNote = document.getElementById('calcSidNote');
+        if (sid < 38) {
+          sidSt.textContent = 'Низкий (Ацидоз)';
+          sidSt.className = sid < 32 ? 'status-badge sb-crit' : 'status-badge sb-warn';
+          sidNote.textContent = 'Избыток Cl⁻ или разведение снижает SID → ацидоз';
+        } else if (sid > 46) {
+          sidSt.textContent = 'Высокий (Алкалоз)';
+          sidSt.className = 'status-badge sb-warn';
+          sidNote.textContent = 'Потеря Cl⁻ (гипохлоремия) повышает SID → алкалоз';
+        } else {
+          sidSt.textContent = 'Норма';
+          sidSt.className = 'status-badge sb-ok';
+          sidNote.textContent = 'Na⁺ + K⁺ − Cl⁻ • норма 40–44';
+        }
+
+        // --- Индекс Горовица ---
+        const pfVal = document.getElementById('calcPfVal');
+        const pfSt = document.getElementById('calcPfStatus');
+        const pfNote = document.getElementById('calcPfNote');
+        if (state.bloodType === 'venous') {
+          pfVal.innerHTML = `— <small>(ВБГ)</small>`;
+          pfSt.textContent = 'Только АБГ';
+          pfSt.className = 'status-badge sb-ok';
+          pfNote.textContent = 'Для расчета P/F нужна артериальная кровь';
+        } else {
+          pfVal.innerHTML = `${Math.round(pfRatio)} <small>mmHg</small>`;
+          if (pfRatio >= 400) {
+            pfSt.textContent = 'Норма'; pfSt.className = 'status-badge sb-ok';
+            pfNote.textContent = 'Газообмен легких не нарушен (>400)';
+          } else if (pfRatio >= 300) {
+            pfSt.textContent = 'Снижен'; pfSt.className = 'status-badge sb-warn';
+            pfNote.textContent = 'Умеренное снижение оксигенации (300–399)';
+          } else if (pfRatio >= 200) {
+            pfSt.textContent = 'ОРДС легкий'; pfSt.className = 'status-badge sb-warn';
+            pfNote.textContent = '200–299 мм рт. ст.';
+          } else if (pfRatio >= 100) {
+            pfSt.textContent = 'ОРДС средний'; pfSt.className = 'status-badge sb-crit';
+            pfNote.textContent = '100–199 мм рт. ст.';
+          } else {
+            pfSt.textContent = 'ОРДС тяжелый'; pfSt.className = 'status-badge sb-crit';
+            pfNote.textContent = 'Критическая гипоксемия (<100)';
+          }
+        }
+
+        // --- Формула Винтера ---
+        document.getElementById('calcWinterVal').innerHTML = `${winterCenter.toFixed(1)} ± 2 <small>mmHg</small>`;
+        const wSt = document.getElementById('calcWinterStatus');
+        const wNote = document.getElementById('calcWinterNote');
+        if (state.cHCO3 < ref.cHCO3.min && state.pH < ref.pH.max) {
+          if (state.pCO2 > winterHigh) {
+            wSt.textContent = '+ Респ. ацидоз'; wSt.className = 'status-badge sb-crit';
+            wNote.textContent = `Факт. pCO₂ (${state.pCO2.toFixed(1)}) > ожид. (${winterLow.toFixed(1)}–${winterHigh.toFixed(1)})`;
+          } else if (state.pCO2 < winterLow) {
+            wSt.textContent = '+ Респ. алкалоз'; wSt.className = 'status-badge sb-warn';
+            wNote.textContent = `Факт. pCO₂ (${state.pCO2.toFixed(1)}) < ожид. (${winterLow.toFixed(1)}–${winterHigh.toFixed(1)})`;
+          } else {
+            wSt.textContent = 'Адекватн. комп.'; wSt.className = 'status-badge sb-ok';
+            wNote.textContent = 'Дыхательная компенсация адекватна';
+          }
+        } else {
+          wSt.textContent = 'При мет. ацидозе'; wSt.className = 'status-badge sb-ok';
+          wNote.textContent = '1.5·HCO₃⁻ + 8 ± 2';
+        }
+
+        // --- Скорректированный Na+ ---
+        document.getElementById('calcCorrNaVal').innerHTML = `${corrNa.toFixed(1)} <small>ммоль/л</small>`;
+
+        // --- Дефицит HCO3- ---
+        const defSt = document.getElementById('calcDeficitStatus');
+        const defVal = document.getElementById('calcDeficitVal');
+        if (hco3Deficit > 0) {
+          const half = Math.round(hco3Deficit / 2);
+          const ml4 = Math.round(half / 0.48);
+          defVal.innerHTML = `${hco3Deficit} <small>ммоль (½ дозы ≈ ${half} ммоль ≈ ${ml4} мл 4% NaHCO₃)</small>`;
+          defSt.textContent = state.pH < 7.15 ? 'Критичный дефицит' : 'Дефицит оснований';
+          defSt.className = state.pH < 7.15 ? 'status-badge sb-crit' : 'status-badge sb-warn';
+        } else {
+          defVal.innerHTML = `0 <small>ммоль (коррекция содой не требуется)</small>`;
+          defSt.textContent = 'Нет дефицита';
+          defSt.className = 'status-badge sb-ok';
+        }
+
+        buildClinicalInterpretation(phys);
+        buildRecommendations(phys);
+      }
+
+      function buildClinicalInterpretation(phys) {
+        const { ref, ag, sid, pfRatio, winterLow, winterHigh } = phys;
+        const findings = [];
+
+        const isAcidemia = state.pH < ref.pH.min;
+        const isAlkalemia = state.pH > ref.pH.max;
+        const highCO2 = state.pCO2 > ref.pCO2.max;
+        const lowCO2 = state.pCO2 < ref.pCO2.min;
+        const lowHCO3 = state.cHCO3 < ref.cHCO3.min;
+        const highHCO3 = state.cHCO3 > ref.cHCO3.max;
+
+        let primaryStr = '';
+        let davZone = 'Зона нормы';
+        let davCls = 'status-badge sb-ok';
+
+        if (isAcidemia) {
+          const decomp = state.pH <= ref.pH.critLow ? 'Тяжелый декомпенсированный' : 'Декомпенсированный';
+          if (lowHCO3 && highCO2) {
+            primaryStr = `${decomp} смешанный ацидоз (метаболический ${ag > 14 ? 'с высоким AG' : 'гиперхлоремический / норм. AG'} + респираторный)`;
+            davZone = 'Смешанный ацидоз'; davCls = 'status-badge sb-crit';
+          } else if (lowHCO3) {
+            const typeTag = ag > 14 ? 'с высоким AG (HAGMA)' : (state.cCl > 107 ? 'гиперхлоремический (NAGMA, ↓SID)' : 'с нормальным AG');
+            const respTag = state.pCO2 > winterHigh ? ' + сопутствующий респираторный ацидоз' :
+                            state.pCO2 < winterLow ? ' + сопутствующий респираторный алкалоз' : ' с адекватной дыхательной компенсацией';
+            primaryStr = `${decomp} метаболический ацидоз ${typeTag}${respTag}`;
+            davZone = 'Метаб. ацидоз'; davCls = 'status-badge sb-crit';
+          } else if (highCO2) {
+            primaryStr = `${decomp} респираторный ацидоз${highHCO3 ? ' (частично компенсированный)' : ' (острый, некомпенсированный)'}`;
+            davZone = 'Респ. ацидоз'; davCls = 'status-badge sb-warn';
+          } else {
+            primaryStr = `${decomp} ацидоз`;
+            davZone = 'Ацидемия'; davCls = 'status-badge sb-crit';
+          }
+          findings.push(primaryStr);
+        } else if (isAlkalemia) {
+          const decomp = state.pH >= ref.pH.critHigh ? 'Тяжелый декомпенсированный' : 'Декомпенсированный';
+          if (highHCO3 && lowCO2) {
+            primaryStr = `${decomp} смешанный алкалоз (метаболический + респираторный)`;
+            davZone = 'Смешанный алкалоз';
+          } else if (highHCO3) {
+            primaryStr = `${decomp} метаболический алкалоз${state.cCl < 98 ? ' (гипохлоремический, ↑SID)' : ''}`;
+            davZone = 'Метаб. алкалоз';
+          } else if (lowCO2) {
+            primaryStr = `${decomp} респираторный алкалоз`;
+            davZone = 'Респ. алкалоз';
+          } else {
+            primaryStr = `${decomp} алкалоз`;
+            davZone = 'Алкалемия';
+          }
+          davCls = 'status-badge sb-warn';
+          findings.push(primaryStr);
+        } else {
+          if (highCO2 && highHCO3) {
+            primaryStr = 'Компенсированный респираторный ацидоз / метаболический алкалоз';
+            findings.push(primaryStr);
+            davZone = 'Компенсация'; davCls = 'status-badge sb-warn';
+          } else if (lowCO2 && lowHCO3) {
+            primaryStr = 'Компенсированный метаболический ацидоз / респираторный алкалоз';
+            findings.push(primaryStr);
+            davZone = 'Компенсация'; davCls = 'status-badge sb-warn';
+          } else {
+            primaryStr = 'Кислотно-щелочное равновесие в пределах нормы';
+          }
+        }
+
+        const davBadge = document.getElementById('davenportZoneBadge');
+        davBadge.textContent = davZone;
+        davBadge.className = davCls;
+
+        if (highCO2) findings.push('гиперкапния');
+        if (lowCO2) findings.push('гипокапния');
+        if (state.pO2 < ref.pO2.min || state.sO2 < ref.sO2.min) findings.push(state.pO2 <= ref.pO2.critLow ? 'выраженная гипоксемия' : 'гипоксемия');
+        if (state.ctHb < ref.ctHb.min) findings.push(state.ctHb < 80 ? 'тяжелая анемия' : 'анемия');
+        if (state.FMetHb > ref.FMetHb.max) findings.push('метгемоглобинемия');
+        if (state.cK > ref.cK.max) findings.push(state.cK >= 6.5 ? 'критическая гиперкалиемия' : 'гиперкалиемия');
+        if (state.cK < ref.cK.min) findings.push(state.cK <= 2.8 ? 'тяжелая гипокалиемия' : 'гипокалиемия');
+        if (state.cNa < ref.cNa.min) findings.push('гипонатриемия');
+        if (state.cNa > ref.cNa.max) findings.push('гипернатриемия');
+        if (state.cCa < ref.cCa.min) findings.push('гипокальциемия');
+        if (state.cCa > ref.cCa.max) findings.push('гиперкальциемия');
+        if (state.cCl > ref.cCl.max) findings.push('гиперхлоремия');
+        if (state.cCl < ref.cCl.min) findings.push('гипохлоремия');
+        if (state.cGlu > ref.cGlu.max) findings.push('гипергликемия');
+        if (state.cGlu < ref.cGlu.min) findings.push('гипогликемия');
+        if (state.cLac > ref.cLac.max) findings.push(state.cLac >= 4.0 ? 'тяжелая гиперлактатемия' : 'гиперлактатемия');
+        if (lowHCO3) findings.push('гипогидрокарбонатемия');
+        if (highHCO3) findings.push('гипергидрокарбонатемия');
+
+        const banner = document.getElementById('summaryBanner');
+        const headline = document.getElementById('summaryHeadline');
+        document.getElementById('summaryBloodBadge').textContent =
+          state.bloodType === 'arterial' ? 'Артериальная кровь (АБГ)' : 'Венозная кровь (ВБГ)';
+
+        const hasCrit =
+          state.pH <= ref.pH.critLow || state.pH >= ref.pH.critHigh ||
+          state.cK >= 6.5 || state.cK <= 2.5 ||
+          state.pO2 <= ref.pO2.critLow || state.cLac >= 4.0 || state.ctHb < 70;
+
+        if (findings.length === 0) {
+          banner.className = 'card summary-card s-ok';
+          headline.style.color = '#34d399';
+          headline.textContent = 'Показатели КЩС, газового состава, электролитов и метаболитов в пределах физиологической нормы.';
+        } else {
+          banner.className = `card summary-card ${hasCrit ? 's-crit' : 's-warn'}`;
+          headline.style.color = hasCrit ? '#fca5a5' : '#fcd34d';
+          headline.textContent = findings[0].charAt(0).toUpperCase() + findings[0].slice(1) +
+            (findings.length > 1 ? ', ' + findings.slice(1).join(', ') : '') + '.';
+        }
+
+        document.getElementById('interpAcidBase').innerHTML =
+          `<strong>${primaryStr}.</strong><br>pH ${state.pH.toFixed(2)}, pCO₂ ${state.pCO2.toFixed(1)} mmHg, HCO₃⁻ ${state.cHCO3.toFixed(1)}, BE ${state.cBase >= 0 ? '+' : ''}${state.cBase.toFixed(1)} ммоль/л. AG = ${ag.toFixed(1)}.`;
+
+        document.getElementById('interpOxygen').innerHTML =
+          `pO₂ ${state.pO2.toFixed(1)} mmHg, sO₂ ${state.sO2.toFixed(1)}%, Hb ${Math.round(state.ctHb)} г/л, MetHb ${state.FMetHb.toFixed(1)}%.` +
+          (state.bloodType === 'arterial' ? ` Индекс P/F = <strong>${Math.round(pfRatio)}</strong>.` : ` (ВБГ отражает венозный возврат и экстракцию O₂).`);
+
+        document.getElementById('interpElectrolytes').innerHTML =
+          `K⁺ ${state.cK.toFixed(1)}, Na⁺ ${Math.round(state.cNa)}, Cl⁻ ${Math.round(state.cCl)}, Ca²⁺ ${state.cCa.toFixed(2)} ммоль/л. SID = <strong>${sid.toFixed(1)}</strong>.` +
+          (state.cK >= 6.5 ? ' <strong style="color:#f87171;">Угроза фатальных аритмий!</strong>' : '');
+
+        document.getElementById('interpMetabolites').innerHTML =
+          `Глюкоза ${state.cGlu.toFixed(1)}, Лактат ${state.cLac.toFixed(1)} ммоль/л, Билирубин ${Math.round(state.ctBil)} мкмоль/л. Осмолярность ${state.mOsm.toFixed(1)} ммоль/кг.`;
+      }
+
+      function buildRecommendations(phys) {
+        const { ref, pfRatio, hco3Deficit } = phys;
+        const recs = [];
+        const w = state.weight;
+
+        // 1. Гиперкалиемия
+        if (state.cK >= 5.5) {
+          const urgent = state.cK >= 6.0;
+          recs.push({
+            cls: urgent ? 'r-crit' : 'r-warn',
+            title: urgent ? `ЭКСТРЕННО: Гиперкалиемия (K⁺ = ${state.cK.toFixed(1)} ммоль/л)` : `Гиперкалиемия (K⁺ = ${state.cK.toFixed(1)} ммоль/л)`,
+            steps: [
+              'Немедленный ЭКГ-мониторинг (высокие заостренные зубцы T, расширение QRS).',
+              'Кардиопротекция: Кальция глюконат 10% — 10 мл в/в медленно (3–5 мин) для стабилизации мембраны миокарда.',
+              'Транслокация K⁺ в клетку: Инсулин короткого действия 10 ЕД в/в + Глюкоза (40% 50–60 мл или 10% 250 мл) с контролем гликемии + Сальбутамол 10–20 мг небулайзером.',
+              urgent ? 'Выведение K⁺: петлевые диуретики (при диурезе) и экстренная оценка показаний к гемодиализу (ЗПТ).' : 'Исключить калийсодержащие растворы и оценить функцию почек.'
+            ]
+          });
+        }
+
+        // 2. Гипокалиемия
+        if (state.cK < 3.5) {
+          const def = Math.round((4.0 - state.cK) * w * 0.4);
+          const mlKcl4 = Math.round(def / 0.54);
+          recs.push({
+            cls: state.cK <= 2.8 ? 'r-crit' : 'r-warn',
+            title: `Восполнение калия (K⁺ = ${state.cK.toFixed(1)} ммоль/л)`,
+            steps: [
+              `Ориентировочный дефицит ≈ ${def} ммоль (≈ ${mlKcl4} мл 4% р-ра KCl).`,
+              'Безопасная скорость инфузии: ≤ 10–20 ммоль/час через перфузор (концентрация >40 ммоль/л — строго в центральную вену под ЭКГ).',
+              'Проверить и восполнить Mg²⁺ (MgSO₄), иначе гипокалиемия может быть рефрактерной.'
+            ]
+          });
+        }
+
+        // 3. Гиперхлоремический ацидоз (Cl- > 108)
+        if (state.cCl > 108 && state.pH < ref.pH.min) {
+          recs.push({
+            cls: 'r-warn',
+            title: `Гиперхлоремический ацидоз (Cl⁻ = ${Math.round(state.cCl)} ммоль/л, ↓SID)`,
+            steps: [
+              'Прекратить инфузию 0.9% NaCl (содержит 154 ммоль/л Cl⁻ и имеет SID = 0, усугубляя ацидоз).',
+              'Перейти на сбалансированные кристаллоиды (Стерофундин, Плазма-Лит, Рингер-лактат) с более физиологичным содержанием хлора.',
+              'Оценить почечную экскрецию и потери бикарбоната (диарея, свищи, почечный канальцевый ацидоз).'
+            ]
+          });
+        }
+
+        // 4. Гиперкапния
+        if (state.pCO2 > ref.pCO2.max) {
+          recs.push({
+            cls: state.pCO2 >= 60 ? 'r-crit' : 'r-warn',
+            title: `Коррекция гиперкапнии (pCO₂ = ${state.pCO2.toFixed(1)} mmHg)`,
+            steps: [
+              'Проверить проходимость дыхательных путей, уровень сознания и работу дыхания.',
+              'Увеличить минутную вентиляцию (МОД): на ИВЛ — повысить ЧД на 2–4/мин и/или оптимизировать ДО (6–8 мл/кг ИМТ) под контролем давления плато и авто-PEEP.',
+              'При обострении ХОБЛ: рассмотреть НИВЛ (BiPAP), бронходилататоры и целевую SpO₂ 88–92%.'
+            ]
+          });
+        }
+
+        // 5. Тяжелый метаболический ацидоз
+        if (state.pH < 7.18 && state.cHCO3 < 15) {
+          const half = Math.round(hco3Deficit / 2);
+          const ml4 = Math.round(half / 0.48);
+          recs.push({
+            cls: 'r-crit',
+            title: `Тяжелый метаболический ацидоз (pH = ${state.pH.toFixed(2)})`,
+            steps: [
+              'Главное: устранение причины (перфузия при шоке, инсулин при ДКА, контроль сепсиса, ЗПТ при ОПП/отравлениях).',
+              `Расчетный дефицит HCO₃⁻ ≈ ${hco3Deficit} ммоль. При решении о буферизации вводят не более ½ дозы (≈ ${half} ммоль: ~${ml4} мл 4% или ~${half} мл 8.4% NaHCO₃) медленно в/в.`,
+              'Важно: введение NaHCO₃ требует адекватной вентиляции легких для выведения образующегося CO₂!'
+            ]
+          });
+        }
+
+        // 6. Метаболический алкалоз
+        if (state.cHCO3 > ref.cHCO3.max && state.pH > ref.pH.max) {
+          recs.push({
+            cls: 'r-warn',
+            title: 'Коррекция метаболического алкалоза',
+            steps: [
+              'Восполнить дефицит хлоридов и объема (0.9% NaCl) + обязательная коррекция гипокалиемии (KCl).',
+              'Оценить потери через ЖКТ (рвота, зонд) и пересмотреть дозы петлевых/тиазидных диуретиков.'
+            ]
+          });
+        }
+
+        // 7. Гипоксемия
+        if ((state.bloodType === 'arterial' && (state.pO2 < 75 || pfRatio < 300)) || (state.bloodType === 'venous' && state.sO2 < 65)) {
+          recs.push({
+            cls: (state.pO2 < 55 || (state.bloodType === 'arterial' && pfRatio < 150)) ? 'r-crit' : 'r-warn',
+            title: state.bloodType === 'arterial' ? 'Оптимизация оксигенации' : 'Низкая венозная сатурация (SvO₂)',
+            steps: state.bloodType === 'arterial' ? [
+              'Повысить FiO₂ до целевой SpO₂ (92–96%, при ХОБЛ 88–92%).',
+              'На ИВЛ: титрация PEEP, протективный ДО 6 мл/кг ИМТ; при P/F < 150 — прон-позиция.'
+            ] : [
+              'Высокая тканевая экстракция O₂ — оценить сердечный выброс, волемию, Hb и выполнить артериальный анализ (АБГ).'
+            ]
+          });
+        }
+
+        // 8. Гипокальциемия
+        if (state.cCa < 1.05) {
+          recs.push({
+            cls: state.cCa < 0.90 ? 'r-crit' : 'r-warn',
+            title: `Гипокальциемия (Ca²⁺ = ${state.cCa.toFixed(2)} ммоль/л)`,
+            steps: [
+              'Кальция глюконат 10% — 10–20 мл в/в медленно (10–15 мин) под контролем ЭКГ.',
+              'Помните: при коррекции ацидоза (росте pH) уровень ионизированного Ca²⁺ дополнительно снизится.'
+            ]
+          });
+        }
+
+        // 9. Гиперлактатемия
+        if (state.cLac >= 2.5) {
+          recs.push({
+            cls: state.cLac >= 4.0 ? 'r-crit' : 'r-warn',
+            title: `Гиперлактатемия (Лактат = ${state.cLac.toFixed(1)} ммоль/л)`,
+            steps: [
+              'Исключить шок и гипоперфузию (АД, СрАД ≥ 65 mmHg, диурез, наполнение капилляров).',
+              'При сепсисе — протокол «Золотого часа»: кристаллоиды, норадреналин при гипотензии, ранняя АБТ и контроль клиренса лактата каждые 2–4 ч.'
+            ]
+          });
+        }
+
+        // 10. Анемия
+        if (state.ctHb < 80) {
+          recs.push({
+            cls: state.ctHb < 70 ? 'r-crit' : 'r-warn',
+            title: `Тяжелая анемия (Hb = ${Math.round(state.ctHb)} г/л)`,
+            steps: [
+              'Оценить показания к трансфузии эритроцитарной взвеси (стандартный порог <70 г/л; при ОКС/кровотечении <80–90 г/л).'
+            ]
+          });
+        }
+
+        // 11. Гликемия
+        if (state.cGlu < 3.9) {
+          recs.push({
+            cls: 'r-crit',
+            title: `Гипогликемия (Глюкоза = ${state.cGlu.toFixed(1)} ммоль/л)`,
+            steps: ['Немедленно Глюкоза 40% 20–40 мл в/в струйно + контроль через 15 мин.']
+          });
+        } else if (state.cGlu >= 10.5) {
+          recs.push({
+            cls: 'r-info',
+            title: `Гипергликемия (Глюкоза = ${state.cGlu.toFixed(1)} ммоль/л)`,
+            steps: ['Целевая гликемия в ОАРИТ 7.8–10.0 ммоль/л; при стойком повышении — титрация инсулина в/в с контролем K⁺.']
+          });
+        }
+
+        const container = document.getElementById('recommendationsList');
+        container.innerHTML = '';
+
+        if (recs.length === 0) {
+          container.innerHTML = `
+            <div class="rec-card r-ok" style="grid-column:1/-1;">
+              <h4 style="color:#34d399;">✓ Показатели в пределах физиологической нормы</h4>
+              <ul><li>Специфическая коррекция КОС и электролитов не требуется. Рекомендован плановый мониторинг в динамике.</li></ul>
+            </div>
+          `;
+          return;
+        }
+
+        recs.forEach(r => {
+          const div = document.createElement('div');
+          div.className = `rec-card ${r.cls}`;
+          const titleColor = r.cls === 'r-crit' ? '#fca5a5' : r.cls === 'r-warn' ? '#fcd34d' : '#67e8f9';
+          div.innerHTML = `
+            <h4 style="color:${titleColor};">${r.title}</h4>
+            <ul>${r.steps.map(s => `<li>${s}</li>`).join('')}</ul>
+          `;
+          container.appendChild(div);
+        });
+      }
+
+      /* =========================================================================
+         7. ГРАФИК 1: КРИВАЯ ДИССОЦИАЦИИ HbO2 (P50)
+         ========================================================================= */
+      function drawP50Chart(phys) {
+        const canvas = document.getElementById('p50Canvas');
+        if (!canvas) return;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(100, Math.floor(rect.width * dpr));
+        canvas.height = Math.max(100, Math.floor(rect.height * dpr));
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const W = rect.width, H = rect.height;
+        const pad = { top: 18, right: 18, bottom: 34, left: 40 };
+        const plotW = W - pad.left - pad.right;
+        const plotH = H - pad.top - pad.bottom;
+
+        ctx.clearRect(0, 0, W, H);
+        const xOf = (po2) => pad.left + (clamp(po2, 0, 120) / 120) * plotW;
+        const yOf = (so2) => pad.top + plotH - (clamp(so2, 0, 100) / 100) * plotH;
+
+        // Сетка
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.13)';
+        ctx.lineWidth = 1;
+        ctx.font = '10px ui-monospace, monospace';
+        ctx.fillStyle = '#94a3b8';
+
+        for (let y = 0; y <= 100; y += 25) {
+          const py = yOf(y);
+          ctx.beginPath(); ctx.moveTo(pad.left, py); ctx.lineTo(pad.left + plotW, py); ctx.stroke();
+          ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+          ctx.fillText(`${y}%`, pad.left - 6, py);
+        }
+        for (let x = 0; x <= 120; x += 20) {
+          const px = xOf(x);
+          ctx.beginPath(); ctx.moveTo(px, pad.top); ctx.lineTo(px, pad.top + plotH); ctx.stroke();
+          ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillText(`${x}`, px, pad.top + plotH + 6);
+        }
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('pO₂ (мм рт. ст.)', pad.left + plotW / 2, H - 10);
+
+        const hill = (po2, p50v) => po2 <= 0 ? 0 : (100 * Math.pow(po2, 2.7)) / (Math.pow(po2, 2.7) + Math.pow(p50v, 2.7));
+
+        // Пунктирная кривая нормы (P50 = 26.8)
+        ctx.save();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.55)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        for (let po2 = 0; po2 <= 120; po2 += 2) {
+          const px = xOf(po2), py = yOf(hill(po2, 26.8));
+          if (po2 === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Живая кривая пациента
+        const col = phys.p50 > 28.5 ? '#f59e0b' : phys.p50 < 25.0 ? '#8b5cf6' : '#06b6d4';
+        ctx.save();
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 2.6;
+        ctx.shadowColor = col;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        for (let po2 = 0; po2 <= 120; po2 += 1.5) {
+          const px = xOf(po2), py = yOf(hill(po2, phys.p50));
+          if (po2 === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Перекрестие P50
+        const p50X = xOf(phys.p50), p50Y = yOf(50);
+        ctx.save();
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+        ctx.beginPath();
+        ctx.moveTo(pad.left, p50Y); ctx.lineTo(p50X, p50Y); ctx.lineTo(p50X, pad.top + plotH);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.beginPath(); ctx.arc(p50X, p50Y, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = col; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4; ctx.stroke();
+
+        ctx.font = 'bold 10px ui-monospace, monospace';
+        ctx.fillStyle = '#f8fafc';
+        ctx.textAlign = p50X > pad.left + plotW * 0.65 ? 'right' : 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`P50=${phys.p50.toFixed(1)}`, p50X + (p50X > pad.left + plotW * 0.65 ? -7 : 7), p50Y - 4);
+
+        // Текущая точка пациента
+        const ptX = xOf(Math.min(120, state.pO2));
+        const ptY = yOf(state.sO2);
+
+        ctx.beginPath(); ctx.arc(ptX, ptY, 6, 0, Math.PI * 2);
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 9;
+        ctx.fill(); ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+
+        ctx.font = '10px ui-monospace, monospace';
+        ctx.fillStyle = '#fca5a5';
+        const rightSide = ptX < pad.left + plotW * 0.60;
+        ctx.textAlign = rightSide ? 'left' : 'right';
+        ctx.textBaseline = ptY < pad.top + 26 ? 'top' : 'bottom';
+        ctx.fillText(
+          state.pO2 > 120 ? `Пациент (pO₂=${state.pO2.toFixed(0)}→)` : `Пациент (${state.pO2.toFixed(0)}, ${state.sO2.toFixed(0)}%)`,
+          ptX + (rightSide ? 9 : -9),
+          ptY + (ptY < pad.top + 26 ? 8 : -7)
+        );
+      }
+
+      /* =========================================================================
+         8. ГРАФИК 2: ДИАГРАММА ДЭВЕНПОРТА (HCO3- vs pH + ИЗОБАРЫ + БУФЕРНАЯ ЛИНИЯ)
+         ========================================================================= */
+      function drawDavenportChart() {
+        const canvas = document.getElementById('davenportCanvas');
+        if (!canvas) return;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(100, Math.floor(rect.width * dpr));
+        canvas.height = Math.max(100, Math.floor(rect.height * dpr));
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const W = rect.width, H = rect.height;
+        const pad = { top: 18, right: 18, bottom: 34, left: 40 };
+        const plotW = W - pad.left - pad.right;
+        const plotH = H - pad.top - pad.bottom;
+
+        ctx.clearRect(0, 0, W, H);
+        const minPh = 6.70, maxPh = 7.75;
+        const minH = 0, maxH = 50;
+        const xOf = (ph) => pad.left + ((clamp(ph, minPh, maxPh) - minPh) / (maxPh - minPh)) * plotW;
+        const yOf = (h) => pad.top + plotH - ((clamp(h, minH, maxH) - minH) / (maxH - minH)) * plotH;
+
+        const nx1 = xOf(7.35), nx2 = xOf(7.45), ny1 = yOf(26), ny2 = yOf(22);
+
+        // Зоны
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.08)';
+        ctx.fillRect(pad.left, pad.top, nx1 - pad.left, ny2 - pad.top);
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.09)';
+        ctx.fillRect(pad.left, ny2, nx1 - pad.left, pad.top + plotH - ny2);
+        ctx.fillStyle = 'rgba(139, 92, 246, 0.09)';
+        ctx.fillRect(nx2, pad.top, pad.left + plotW - nx2, ny2 - pad.top);
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.08)';
+        ctx.fillRect(nx2, ny2, pad.left + plotW - nx2, pad.top + plotH - ny2);
+
+        // Зона нормы
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+        ctx.fillRect(nx1, ny1, nx2 - nx1, ny2 - ny1);
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.78)';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(nx1, ny1, nx2 - nx1, ny2 - ny1);
+
+        // Сетка
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.13)';
+        ctx.lineWidth = 1;
+        ctx.font = '10px ui-monospace, monospace';
+        ctx.fillStyle = '#94a3b8';
+
+        for (let h = 0; h <= 50; h += 10) {
+          const py = yOf(h);
+          ctx.beginPath(); ctx.moveTo(pad.left, py); ctx.lineTo(pad.left + plotW, py); ctx.stroke();
+          ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+          ctx.fillText(`${h}`, pad.left - 6, py);
+        }
+        [6.8, 7.0, 7.2, 7.4, 7.6].forEach(ph => {
+          const px = xOf(ph);
+          ctx.beginPath(); ctx.moveTo(px, pad.top); ctx.lineTo(px, pad.top + plotH); ctx.stroke();
+          ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillText(ph.toFixed(1), px, pad.top + plotH + 6);
+        });
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('pH крови', pad.left + plotW / 2, H - 10);
+
+        // Подписи зон
+        ctx.font = '9.5px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.72)'; ctx.fillText('Респ. ацидоз', pad.left + 6, pad.top + 12);
+        ctx.fillStyle = 'rgba(248, 113, 113, 0.75)'; ctx.fillText('Метаб. ацидоз', pad.left + 6, pad.top + plotH - 8);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = 'rgba(167, 139, 250, 0.78)'; ctx.fillText('Метаб. алкалоз', pad.left + plotW - 6, pad.top + 12);
+        ctx.fillStyle = 'rgba(34, 211, 238, 0.72)'; ctx.fillText('Респ. алкалоз', pad.left + plotW - 6, pad.top + plotH - 8);
+
+        ctx.save();
+        ctx.beginPath(); ctx.rect(pad.left, pad.top, plotW, plotH); ctx.clip();
+
+        // Нормальная буферная линия крови (наклон ~ -25 ммоль/л на 1 ед pH через (7.40, 24))
+        ctx.setLineDash([5, 4]);
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.55)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(xOf(7.10), yOf(24 + 25 * (7.40 - 7.10)));
+        ctx.lineTo(xOf(7.70), yOf(24 + 25 * (7.40 - 7.70)));
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Изобары pCO2
+        [20, 40, 60, 80].forEach(pco2 => {
+          ctx.strokeStyle = pco2 === 40 ? 'rgba(6, 182, 212, 0.6)' : 'rgba(148, 163, 184, 0.3)';
+          ctx.lineWidth = pco2 === 40 ? 1.5 : 1;
+          ctx.beginPath();
+          let started = false, lbl = null;
+          for (let ph = minPh; ph <= maxPh; ph += 0.01) {
+            const h = 0.0301 * pco2 * Math.pow(10, ph - 6.1);
+            if (h >= minH && h <= maxH) {
+              const px = xOf(ph), py = yOf(h);
+              if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
+              if (h > 35 && h < 44 && !lbl) lbl = { x: px, y: py };
+            }
+          }
+          ctx.stroke();
+          if (lbl) {
+            ctx.font = '9px ui-monospace, monospace';
+            ctx.fillStyle = pco2 === 40 ? '#22d3ee' : '#94a3b8';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${pco2}`, lbl.x, lbl.y - 5);
+          }
+        });
+        ctx.restore();
+
+        // Точка пациента
+        const ptX = xOf(state.pH), ptY = yOf(state.cHCO3);
+        const dotCol = state.pH < 7.35 ? '#ef4444' : state.pH > 7.45 ? '#8b5cf6' : '#10b981';
+
+        ctx.beginPath(); ctx.arc(ptX, ptY, 10, 0, Math.PI * 2);
+        ctx.fillStyle = dotCol + '33'; ctx.fill();
+        ctx.beginPath(); ctx.arc(ptX, ptY, 5.5, 0, Math.PI * 2);
+        ctx.fillStyle = dotCol;
+        ctx.shadowColor = dotCol; ctx.shadowBlur = 10;
+        ctx.fill(); ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.8; ctx.stroke();
+      }
+
+      /* =========================================================================
+         9. ЖИВАЯ 2D-АНИМАЦИЯ КЛЕТОК, КАПИЛЛЯРА, ОРГАНОИДОВ И ИОННЫХ КАНАЛОВ
+         ========================================================================= */
+      const cellSim = {
+        canvas: null, ctx: null,
+        w: 800, h: 360,
+        cells: [], rbcs: [], particles: [], flashes: [],
+        time: 0, lastTs: 0
+      };
+
+      function initCellScene() {
+        cellSim.canvas = document.getElementById('cellCanvas');
+        cellSim.ctx = cellSim.canvas.getContext('2d');
+        resizeCellCanvas();
+        seedEntities();
+      }
+
+      function resizeCellCanvas() {
+        const wrap = document.getElementById('cellCanvasWrap');
+        const rect = wrap.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        cellSim.w = Math.max(300, rect.width);
+        cellSim.h = Math.max(260, rect.height);
+        cellSim.canvas.width = Math.floor(cellSim.w * dpr);
+        cellSim.canvas.height = Math.floor(cellSim.h * dpr);
+        cellSim.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        layoutCells();
+      }
+
+      function layoutCells() {
+        const W = cellSim.w, H = cellSim.h;
+        const capTop = H * 0.78;
+        const count = W < 680 ? 3 : 4;
+        cellSim.cells = [];
+        const stepX = W / count;
+
+        for (let i = 0; i < count; i++) {
+          const cx = (i + 0.5) * stepX;
+          const cy = 46 + (capTop - 56) * (i % 2 === 0 ? 0.45 : 0.56);
+          const rx = Math.min(stepX * 0.38, 108);
+          const ry = Math.min((capTop - 60) * 0.34, 66);
+
+          cellSim.cells.push({
+            cx, cy, rx, ry,
+            phase: i * 1.6,
+            mitos: [
+              { ox: -rx * 0.46, oy: -ry * 0.28, angle: 0.4, len: Math.min(22, rx * 0.24) },
+              { ox:  rx * 0.46, oy:  ry * 0.25, angle: -0.5, len: Math.min(22, rx * 0.24) },
+              { ox:  rx * 0.35, oy: -ry * 0.40, angle: 0.85, len: Math.min(18, rx * 0.19) }
+            ],
+            enzymes: [
+              { ox: -rx * 0.32, oy: ry * 0.38, ph: i + 0.5 },
+              { ox:  rx * 0.05, oy: -ry * 0.52, ph: i + 2.1 }
+            ]
+          });
+        }
+      }
+
+      function seedEntities() {
+        cellSim.rbcs = [];
+        for (let i = 0; i < 16; i++) {
+          cellSim.rbcs.push({
+            x: Math.random() * cellSim.w,
+            yOff: (Math.random() - 0.5) * 26,
+            speed: 30 + Math.random() * 18,
+            rot: (Math.random() - 0.5) * 0.35
+          });
+        }
+
+        cellSim.particles = [];
+        [
+          { type: 'O2',   count: 26 },
+          { type: 'CO2',  count: 22 },
+          { type: 'H',    count: 34 },
+          { type: 'HCO3', count: 22 },
+          { type: 'K',    count: 26 },
+          { type: 'NaCl', count: 16 },
+          { type: 'Ca',   count: 14 },
+          { type: 'Glu',  count: 12 },
+          { type: 'ATP',  count: 24 }
+        ].forEach(t => {
+          for (let i = 0; i < t.count; i++) {
+            const cell = cellSim.cells[i % Math.max(1, cellSim.cells.length)] || { cx: 200, cy: 140, rx: 60, ry: 40 };
+            cellSim.particles.push({
+              type: t.type,
+              x: t.type === 'K' || t.type === 'ATP' ? cell.cx + (Math.random() - 0.5) * cell.rx : Math.random() * cellSim.w,
+              y: t.type === 'K' || t.type === 'ATP' ? cell.cy + (Math.random() - 0.5) * cell.ry : 26 + Math.random() * (cellSim.h * 0.72),
+              vx: (Math.random() - 0.5) * 34,
+              vy: (Math.random() - 0.5) * 34,
+              cellIdx: i,
+              life: Math.random() * 6,
+              size: t.type === 'Glu' ? 4.2 : t.type === 'HCO3' ? 3.8 : t.type === 'ATP' ? 2.8 : 3.2
+            });
+          }
+        });
+      }
+
+      function stepAndDrawCellSim(ts) {
+        if (!cellSim.lastTs) cellSim.lastTs = ts;
+        const dt = Math.min(0.05, (ts - cellSim.lastTs) / 1000);
+        cellSim.lastTs = ts;
+        const phys = computePhysiology();
+
+        if (!state.paused) {
+          cellSim.time += dt;
+          updateParticles(dt, phys);
+        }
+        drawCellScene(phys);
+        requestAnimationFrame(stepAndDrawCellSim);
+      }
+
+      function updateParticles(dt, phys) {
+        const W = cellSim.w, H = cellSim.h, capTop = H * 0.78;
+        const metSpeed = Math.max(0.14, phys.enzymeActivity / 100);
+        const acidSev = state.pH < 7.35 ? clamp((7.35 - state.pH) / 0.55, 0, 1) : 0;
+        const alkSev = state.pH > 7.45 ? clamp((state.pH - 7.45) / 0.30, 0, 1) : 0;
+
+        cellSim.rbcs.forEach(r => {
+          r.x += r.speed * (0.55 + metSpeed * 0.6) * dt;
+          if (r.x > W + 24) r.x = -24;
+        });
+
+        for (let i = cellSim.flashes.length - 1; i >= 0; i--) {
+          cellSim.flashes[i].age += dt;
+          if (cellSim.flashes[i].age > 0.55) cellSim.flashes.splice(i, 1);
+        }
+
+        const hList = [], hco3List = [];
+        cellSim.particles.forEach((p, idx) => {
+          const cell = cellSim.cells[p.cellIdx % cellSim.cells.length];
+          p.life += dt;
+
+          if (p.type === 'O2') {
+            // При алкалозе (сдвиг влево) O2 неохотно покидает капилляр
+            if (alkSev > 0.3 && idx % 2 === 0) {
+              p.x = (p.x + 38 * dt) % W;
+              p.y = capTop + 12 + Math.sin(cellSim.time * 2 + idx) * 10;
+            } else {
+              const m = cell.mitos[idx % cell.mitos.length];
+              const dx = (cell.cx + m.ox) - p.x, dy = (cell.cy + m.oy) - p.y;
+              const d = Math.hypot(dx, dy) || 1;
+              const spd = 30 + 22 * metSpeed;
+              p.x += (dx / d) * spd * dt; p.y += (dy / d) * spd * dt;
+              if (d < 10) { p.x = Math.random() * W; p.y = capTop + 10 + Math.random() * (H - capTop - 18); }
+            }
+          } else if (p.type === 'CO2') {
+            const trap = clamp((state.pCO2 - 42) / 40, 0, 1);
+            p.x += Math.sin(cellSim.time * 1.4 + idx) * (14 * metSpeed + 6) * dt;
+            p.y += ((1 - trap * 0.78) * (18 + 14 * metSpeed)) * dt;
+            if (p.y > H - 8 || p.y < 16) {
+              p.x = cell.cx + (Math.random() - 0.5) * cell.rx;
+              p.y = cell.cy + (Math.random() - 0.5) * cell.ry;
+            }
+          } else if (p.type === 'H') {
+            if (acidSev > 0.22 && idx % 3 === 0) {
+              // Протоны H+ входят в клетку через обменник
+              const dx = cell.cx - p.x, dy = cell.cy - p.y;
+              const d = Math.hypot(dx, dy) || 1;
+              p.x += (dx / d) * (26 * acidSev) * dt;
+              p.y += (dy / d) * (26 * acidSev) * dt;
+              if (d < 12) { p.x = Math.random() * W; p.y = 22 + Math.random() * (capTop - 32); }
+            } else {
+              p.x += p.vx * (0.4 + 0.6 * metSpeed) * dt;
+              p.y += p.vy * (0.4 + 0.6 * metSpeed) * dt;
+              if (p.x < 8 || p.x > W - 8) p.vx *= -1;
+              if (p.y < 18 || p.y > capTop - 8) p.vy *= -1;
+            }
+            hList.push(p);
+          } else if (p.type === 'HCO3' || p.type === 'NaCl') {
+            p.x += p.vx * (0.45 + 0.55 * metSpeed) * dt;
+            p.y += p.vy * (0.45 + 0.55 * metSpeed) * dt;
+            if (p.x < 8 || p.x > W - 8) p.vx *= -1;
+            if (p.y < 18 || p.y > capTop - 8) p.vy *= -1;
+            if (p.type === 'HCO3') hco3List.push(p);
+          } else if (p.type === 'K') {
+            const kExit = Math.max(acidSev, clamp((state.cK - 5.0) / 3.5, 0, 1));
+            const shouldExit = (idx % 10) / 10 < kExit * 0.88;
+            if (shouldExit) {
+              const dx = p.x - cell.cx, dy = p.y - cell.cy;
+              const d = Math.hypot(dx, dy) || 1;
+              if (d < cell.rx * 1.35) {
+                p.x += (dx / d) * (26 * (0.4 + kExit)) * dt;
+                p.y += (dy / d) * (26 * (0.4 + kExit)) * dt;
+              } else {
+                p.x += Math.sin(cellSim.time + idx) * 12 * dt;
+                p.y += Math.cos(cellSim.time + idx) * 12 * dt;
+              }
+              p.x = clamp(p.x, 10, W - 10);
+              p.y = clamp(p.y, 20, capTop - 10);
+            } else {
+              const dx = cell.cx - p.x, dy = cell.cy - p.y;
+              const d = Math.hypot(dx, dy) || 1;
+              if (d > cell.ry * 0.72) {
+                p.x += (dx / d) * 28 * dt; p.y += (dy / d) * 28 * dt;
+              } else {
+                p.x += Math.cos(cellSim.time * 1.4 * metSpeed + idx) * 10 * dt;
+                p.y += Math.sin(cellSim.time * 1.4 * metSpeed + idx) * 10 * dt;
+              }
+            }
+          } else if (p.type === 'Ca') {
+            const ang = cellSim.time * (0.5 * metSpeed + (alkSev ? 0.9 : 0)) + idx * 1.3;
+            p.x += (cell.cx + Math.cos(ang) * (cell.rx + 8) - p.x) * 2.4 * dt;
+            p.y += (cell.cy + Math.sin(ang) * (cell.ry + 8) - p.y) * 2.4 * dt;
+          } else if (p.type === 'Glu') {
+            const dx = cell.cx - p.x, dy = cell.cy - p.y;
+            const d = Math.hypot(dx, dy) || 1;
+            p.x += (dx / d) * (22 * metSpeed + 5) * dt;
+            p.y += (dy / d) * (22 * metSpeed + 5) * dt;
+            if (d < 14) { p.x = Math.random() * W; p.y = capTop - 4; }
+          } else if (p.type === 'ATP') {
+            const m = cell.mitos[idx % cell.mitos.length];
+            const r = 6 + ((p.life * 14 * metSpeed) % 19);
+            const ang = idx * 2.1 + cellSim.time * 1.8 * metSpeed;
+            p.x = cell.cx + m.ox + Math.cos(ang) * r;
+            p.y = cell.cy + m.oy + Math.sin(ang) * r * 0.72;
+          }
+        });
+
+        // Буферные вспышки (H+ + HCO3-)
+        if (cellSim.flashes.length < 6 && state.cHCO3 > 6) {
+          for (let i = 0; i < Math.min(10, hList.length); i++) {
+            for (let j = 0; j < Math.min(10, hco3List.length); j++) {
+              if (Math.hypot(hList[i].x - hco3List[j].x, hList[i].y - hco3List[j].y) < 11) {
+                cellSim.flashes.push({ x: hList[i].x, y: hList[i].y, age: 0 });
+                hList[i].x = Math.random() * W; hco3List[j].x = Math.random() * W;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      function drawCellScene(phys) {
+        const ctx = cellSim.ctx;
+        const W = cellSim.w, H = cellSim.h, capTop = H * 0.78, t = cellSim.time;
+        const isAcid = state.pH < 7.35, isAlk = state.pH > 7.45;
+        const acidSev = isAcid ? clamp((7.35 - state.pH) / 0.55, 0, 1) : 0;
+        const alkSev = isAlk ? clamp((state.pH - 7.45) / 0.30, 0, 1) : 0;
+        const spasmSev = Math.max(alkSev, state.cCa < 1.08 ? clamp((1.08 - state.cCa) / 0.35, 0, 1) : 0);
+        const metSpeed = Math.max(0.14, phys.enzymeActivity / 100);
+
+        // 1. Фон интерстиция
+        const bg = ctx.createLinearGradient(0, 0, 0, capTop);
+        if (isAcid) {
+          bg.addColorStop(0, `rgb(${Math.round(11 + 60 * acidSev)}, ${Math.round(24 - 11 * acidSev)}, ${Math.round(42 - 20 * acidSev)})`);
+          bg.addColorStop(1, `rgb(${Math.round(16 + 68 * acidSev)}, ${Math.round(22 - 10 * acidSev)}, ${Math.round(38 - 18 * acidSev)})`);
+        } else if (isAlk) {
+          bg.addColorStop(0, `rgb(${Math.round(14 + 34 * alkSev)}, ${Math.round(22 - 4 * alkSev)}, ${Math.round(48 + 42 * alkSev)})`);
+          bg.addColorStop(1, `rgb(${Math.round(20 + 38 * alkSev)}, ${Math.round(20 - 2 * alkSev)}, ${Math.round(58 + 42 * alkSev)})`);
+        } else {
+          bg.addColorStop(0, '#091426');
+          bg.addColorStop(1, '#0d2036');
+        }
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, capTop);
+
+        // 2. Капилляр и эритроциты (цвет зависит от sO2)
+        const oxyFrac = clamp((state.sO2 - 45) / 55, 0, 1);
+        const cr = Math.round(58 + 80 * oxyFrac);
+        const cg = Math.round(16 + 8 * oxyFrac);
+        const cb = Math.round(52 - 30 * oxyFrac);
+        const capG = ctx.createLinearGradient(0, capTop, 0, H);
+        capG.addColorStop(0, `rgb(${cr}, ${cg}, ${cb})`);
+        capG.addColorStop(1, `rgb(${Math.round(cr * 0.55)}, ${Math.round(cg * 0.55)}, ${Math.round(cb * 0.65)})`);
+        ctx.fillStyle = capG;
+        ctx.fillRect(0, capTop, W, H - capTop);
+
+        ctx.strokeStyle = 'rgba(244, 114, 182, 0.36)';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(0, capTop); ctx.lineTo(W, capTop); ctx.stroke();
+
+        const visRbc = Math.max(3, Math.round((state.ctHb / 150) * cellSim.rbcs.length));
+        for (let i = 0; i < Math.min(visRbc, cellSim.rbcs.length); i++) {
+          const r = cellSim.rbcs[i];
+          const ry = capTop + (H - capTop) * 0.5 + r.yOff * 0.48;
+          ctx.save();
+          ctx.translate(r.x, ry); ctx.rotate(r.rot);
+          ctx.beginPath(); ctx.ellipse(0, 0, 11.5, 6.5, 0, 0, Math.PI * 2);
+          ctx.fillStyle = `rgb(${Math.min(242, cr + 90)}, ${Math.min(82, cg + 22)}, ${Math.min(115, cb + 24)})`;
+          ctx.fill();
+          ctx.beginPath(); ctx.ellipse(0, 0, 5.5, 3, 0, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fill();
+          ctx.restore();
+        }
+
+        // 3. Клетки
+        cellSim.cells.forEach((cell) => {
+          const swell = 1 + acidSev * 0.09;
+          const breathe = 1 + Math.sin(t * 1.4 * metSpeed + cell.phase) * 0.018;
+          const rx = cell.rx * swell * breathe, ry = cell.ry * swell * breathe;
+          const jx = spasmSev > 0.1 ? Math.sin(t * 28 + cell.phase) * 2.4 * spasmSev : 0;
+          const jy = spasmSev > 0.1 ? Math.cos(t * 32 + cell.phase) * 2.4 * spasmSev : 0;
+          const cx = cell.cx + jx, cy = cell.cy + jy;
+
+          const pathCell = (sc) => {
+            ctx.beginPath();
+            for (let i = 0; i <= 32; i++) {
+              const a = (i / 32) * Math.PI * 2;
+              const wob = acidSev * Math.sin(a * 5 + t * 0.8 + cell.phase) * 3.5 + spasmSev * Math.sin(a * 9 + t * 18) * 1.6;
+              const px = cx + Math.cos(a) * (rx * sc + wob);
+              const py = cy + Math.sin(a) * (ry * sc + wob * 0.7);
+              if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+          };
+
+          pathCell(1);
+          const cg2 = ctx.createRadialGradient(cx, cy, rx * 0.1, cx, cy, rx * 1.1);
+          if (isAcid) {
+            cg2.addColorStop(0, 'rgba(36, 26, 46, 0.90)');
+            cg2.addColorStop(1, `rgba(${Math.round(30 + 44 * acidSev)}, 20, 34, 0.94)`);
+          } else if (isAlk) {
+            cg2.addColorStop(0, 'rgba(24, 40, 74, 0.90)');
+            cg2.addColorStop(1, 'rgba(42, 26, 78, 0.94)');
+          } else {
+            cg2.addColorStop(0, 'rgba(18, 46, 74, 0.88)');
+            cg2.addColorStop(1, 'rgba(12, 31, 54, 0.93)');
+          }
+          ctx.fillStyle = cg2; ctx.fill();
+          ctx.strokeStyle = isAcid ? `rgba(248,113,113,${0.48 + 0.4 * acidSev})` : isAlk ? `rgba(167,139,250,${0.5 + 0.35 * alkSev})` : 'rgba(34,211,238,0.65)';
+          ctx.lineWidth = 2.4; ctx.stroke();
+
+          // Двойной липидный слой
+          pathCell(0.92);
+          ctx.strokeStyle = 'rgba(148,163,184,0.26)'; ctx.lineWidth = 1.1; ctx.stroke();
+
+          // Трансмембранные каналы H+/K+
+          for (let k = 0; k < 4; k++) {
+            const ang = k * (Math.PI / 2) + 0.4;
+            const px = cx + Math.cos(ang) * rx * 0.96, py = cy + Math.sin(ang) * ry * 0.96;
+            ctx.save(); ctx.translate(px, py); ctx.rotate(ang);
+            ctx.fillStyle = isAcid ? '#f87171' : '#06b6d4';
+            ctx.fillRect(-3.2, -3.5, 6.4, 2.5);
+            ctx.fillRect(-3.2, 1, 6.4, 2.5);
+            ctx.restore();
+          }
+
+          // Ядро и ядрышко
+          const nucR = Math.min(rx, ry) * 0.33;
+          ctx.beginPath(); ctx.arc(cx - 2, cy, nucR, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(59, 130, 246, 0.28)'; ctx.fill();
+          ctx.strokeStyle = 'rgba(96, 165, 250, 0.65)'; ctx.lineWidth = 1.4; ctx.stroke();
+          ctx.beginPath(); ctx.arc(cx + nucR * 0.22, cy - nucR * 0.14, nucR * 0.35, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(147, 197, 253, 0.55)'; ctx.fill();
+
+          // Ферментные комплексы (вращаются быстро в норме, замедляются/денатурируют при ацидозе)
+          cell.enzymes.forEach(ez => {
+            ctx.save();
+            ctx.translate(cx + ez.ox, cy + ez.oy);
+            ctx.rotate(t * 1.8 * metSpeed + ez.ph);
+            ctx.strokeStyle = phys.enzymeActivity >= 70 ? 'rgba(56, 189, 248, 0.65)' : 'rgba(245, 158, 11, 0.5)';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.arc(0, 0, 6, 0.3, Math.PI * 1.75);
+            ctx.stroke();
+            ctx.restore();
+          });
+
+          // Митохондрии
+          const mitoGlow = phys.atpScore / 100;
+          cell.mitos.forEach(m => {
+            ctx.save(); ctx.translate(cx + m.ox, cy + m.oy); ctx.rotate(m.angle);
+            ctx.beginPath(); ctx.ellipse(0, 0, m.len * 0.55, m.len * 0.28, 0, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${Math.round(16 + 210 * (1 - mitoGlow))}, ${Math.round(185 * mitoGlow + 36)}, ${Math.round(129 * mitoGlow + 36)}, ${0.28 + 0.5 * mitoGlow})`;
+            if (mitoGlow > 0.5) { ctx.shadowColor = '#10b981'; ctx.shadowBlur = 8 * mitoGlow; }
+            ctx.fill(); ctx.shadowBlur = 0;
+            ctx.strokeStyle = `rgba(52, 211, 153, ${0.35 + 0.55 * mitoGlow})`; ctx.lineWidth = 1.1; ctx.stroke();
+            ctx.beginPath();
+            const l = m.len * 0.36;
+            ctx.moveTo(-l, 0); ctx.lineTo(-l * 0.4, -2.4); ctx.lineTo(0, 2.4); ctx.lineTo(l * 0.4, -2.4); ctx.lineTo(l, 0);
+            ctx.strokeStyle = 'rgba(253, 224, 71, 0.55)'; ctx.lineWidth = 0.9; ctx.stroke();
+            ctx.restore();
+          });
+        });
+
+        // 4. Частицы
+        const quotas = {
+          O2:   Math.max(3, Math.round(26 * phys.o2NormFactor)),
+          CO2:  clamp(Math.round((state.pCO2 / 45) * 14), 4, 22),
+          H:    isAcid ? clamp(Math.round(12 + acidSev * 22), 10, 34) : Math.max(2, Math.round(10 - alkSev * 8)),
+          HCO3: clamp(Math.round((state.cHCO3 / 24) * 14), 2, 22),
+          K:    clamp(Math.round((state.cK / 4.2) * 14), 6, 26),
+          NaCl: clamp(Math.round((state.cCl / 102) * 11), 6, 16),
+          Ca:   clamp(Math.round((state.cCa / 1.2) * 10 * (1 - alkSev * 0.4)), 3, 14),
+          Glu:  clamp(Math.round((state.cGlu / 5.5) * 7), 3, 12),
+          ATP:  Math.max(0, Math.round((phys.atpScore / 100) * 24))
+        };
+
+        const colors = {
+          O2: '#38bdf8', CO2: '#c084fc', H: '#ef4444', HCO3: '#22d3ee',
+          K: '#facc15', NaCl: '#94a3b8', Ca: '#e0f2fe', Glu: '#34d399', ATP: '#fde047'
+        };
+
+        const seen = {};
+        cellSim.particles.forEach(p => {
+          seen[p.type] = (seen[p.type] || 0) + 1;
+          if (seen[p.type] > quotas[p.type]) return;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = colors[p.type];
+          if (p.type === 'ATP') { ctx.shadowColor = '#fde047'; ctx.shadowBlur = 7; }
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        });
+
+        // 5. Вспышки буферной нейтрализации
+        cellSim.flashes.forEach(f => {
+          const pr = f.age / 0.55;
+          ctx.beginPath(); ctx.arc(f.x, f.y, 4 + pr * 13, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(34, 211, 238, ${1 - pr})`;
+          ctx.lineWidth = 2 * (1 - pr); ctx.stroke();
+        });
+      }
+
+      /* =========================================================================
+         10. ПРИВЯЗКА ЭЛЕМЕНТОВ УПРАВЛЕНИЯ И СТАРТ
+         ========================================================================= */
+      function updateAllDerived() {
+        const phys = computePhysiology();
+        updateCalculatorsAndInterpretation(phys);
+        drawP50Chart(phys);
+        drawDavenportChart();
+      }
+
+      function updateBloodButtons() {
+        const bA = document.getElementById('btnArterial');
+        const bV = document.getElementById('btnVenous');
+        bA.className = state.bloodType === 'arterial' ? 'seg-btn active-art' : 'seg-btn';
+        bV.className = state.bloodType === 'venous' ? 'seg-btn active-ven' : 'seg-btn';
+      }
+
+      function applyPreset(key) {
+        const p = PRESETS[key];
+        if (!p) return;
+        const { chain, ...vals } = p;
+        Object.assign(state, vals);
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.preset === key);
+        });
+
+        setCausalChain(chain || 'Сценарий загружен.');
+        updateBloodButtons();
+        syncInputsFromState();
+        updateAllDerived();
+      }
+
+      function bindControls() {
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+          btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+        });
+
+        document.getElementById('btnArterial').addEventListener('click', () => {
+          state.bloodType = 'arterial';
+          updateBloodButtons(); syncInputsFromState(); updateAllDerived();
+        });
+        document.getElementById('btnVenous').addEventListener('click', () => {
+          state.bloodType = 'venous';
+          updateBloodButtons(); syncInputsFromState(); updateAllDerived();
+        });
+
+        // Переключатель физиологической связи
+        const sw = document.getElementById('couplingSwitch');
+        const swLbl = document.getElementById('couplingStateLabel');
+        const swSub = document.getElementById('couplingSubText');
+        sw.addEventListener('change', () => {
+          state.coupling = sw.checked;
+          swLbl.textContent = state.coupling ? 'ВКЛ' : 'ВЫКЛ';
+          swLbl.style.color = state.coupling ? '#22d3ee' : '#94a3b8';
+          swSub.textContent = state.coupling
+            ? 'ВКЛ — изменение pCO₂, Cl⁻, HCO₃⁻, лактата или pH автоматически пересчитывает зависимые показатели'
+            : 'ВЫКЛ (Ручной ввод бланка) — поля независимы, удобно переписывать точные цифры с анализатора';
+        });
+
+        // Преаналитические поля
+        const bindPre = (key, min, max) => {
+          const n = document.getElementById(`num_${key}`);
+          const r = document.getElementById(`rng_${key}`);
+          const fn = (raw) => {
+            let v = parseFloat(raw);
+            if (isNaN(v)) return;
+            v = clamp(v, min, max);
+            const old = state[key];
+            state[key] = v;
+            if (key === 'temp') handleCoupledChange('temp', old, v);
+            syncInputsFromState();
+            updateAllDerived();
+          };
+          n.addEventListener('input', e => fn(e.target.value));
+          r.addEventListener('input', e => fn(e.target.value));
+        };
+        bindPre('temp', 32, 42);
+        bindPre('fio2', 21, 100);
+        bindPre('weight', 30, 150);
+
+        // Пауза/Старт анимации
+        document.getElementById('pauseAnimBtn').addEventListener('click', () => {
+          state.paused = !state.paused;
+          document.getElementById('pauseIcon').textContent = state.paused ? '▶' : '⏸';
+          document.getElementById('pauseText').textContent = state.paused ? 'Старт' : 'Пауза';
+        });
+
+        // Ресайз всех холстов
+        let rt;
+        window.addEventListener('resize', () => {
+          clearTimeout(rt);
+          rt = setTimeout(() => {
+            resizeCellCanvas();
+            updateAllDerived();
+          }, 80);
+        });
+      }
+
+      window.onload = function () {
+        buildParameterUI();
+        initTooltips();
+        bindControls();
+        initCellScene();
+        applyPreset('normal');
+        requestAnimationFrame(stepAndDrawCellSim);
+      };
+    })();
+  </script>
+</body>
+</html>
